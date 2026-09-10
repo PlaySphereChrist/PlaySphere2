@@ -104,8 +104,8 @@ PlaySphere/
 │
 ├── server/                        # Node.js + Express API
 │   ├── src/
-│   │   ├── config/                # DB pool, env validation
-│   │   ├── middleware/            # Auth, error handler, logging
+│   │   ├── config/                # DB pool (pg), env validation (env.js)
+│   │   ├── middleware/            # Auth, errorHandler, notFound, requestLogger
 │   │   ├── modules/               # Domain modules (one folder each)
 │   │   │   ├── auth/
 │   │   │   ├── users/
@@ -127,11 +127,12 @@ PlaySphere/
 │   │   │   ├── notifications/
 │   │   │   ├── payments/
 │   │   │   └── audit-logs/
-│   │   ├── routes/                # Central router that mounts all modules
-│   │   ├── utils/                 # Shared helpers (pagination, errors, etc.)
-│   │   └── app.js                 # Express app factory
-│   ├── server.js                  # Entry point
-│   └── package.json
+│   │   ├── routes/                # Central router (index.js), health check
+│   │   ├── utils/                 # Shared helpers (asyncHandler.js)
+│   │   └── app.js                 # Express app factory, CORS, parsing
+│   ├── server.js                  # Entry point, graceful shutdown
+│   ├── package.json
+│   └── README.md                  # Backend-specific instructions
 │
 ├── database/
 │   ├── migrations/                # Ordered SQL migration files
