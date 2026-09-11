@@ -30,7 +30,7 @@ router.get('/health', asyncHandler(async (req, res) => {
 
 // Domain modules
 router.use('/auth', require('../modules/auth/auth.routes'));
-
-
+router.use('/users', require('../modules/users/users.routes'));
+router.use('/player-profiles', require('../modules/player-profiles/player-profiles.routes'));
 
 module.exports = router;
