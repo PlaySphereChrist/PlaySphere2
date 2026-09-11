@@ -31,29 +31,6 @@ router.get('/health', asyncHandler(async (req, res) => {
 // Domain modules
 router.use('/auth', require('../modules/auth/auth.routes'));
 
-// ---------------------------------------------------------------------------
-// TEMPORARY TEST-ONLY RBAC ROUTES — Phase 3 validation only
-// These will be removed when real Admin/Organizer routes are implemented.
-// ---------------------------------------------------------------------------
-router.get(
-  '/_test/admin-only',
-  authenticate,
-  authorizeRoles('ADMIN'),
-  (req, res) => res.json({ success: true, message: 'ADMIN access granted', roles: req.user.roles })
-);
 
-router.get(
-  '/_test/organizer-only',
-  authenticate,
-  authorizeRoles('ORGANIZER'),
-  (req, res) => res.json({ success: true, message: 'ORGANIZER access granted', roles: req.user.roles })
-);
-
-router.get(
-  '/_test/organizer-or-admin',
-  authenticate,
-  authorizeRoles('ORGANIZER', 'ADMIN'),
-  (req, res) => res.json({ success: true, message: 'ORGANIZER or ADMIN access granted', roles: req.user.roles })
-);
 
 module.exports = router;

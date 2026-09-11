@@ -183,6 +183,7 @@ Implemented in Phase 3. The following describes the actual running system.
 - **Public signup** creates `USER` accounts only. No role field is accepted from the client during registration.
 - `ORGANIZER` and `ADMIN` accounts are seeded; there is no public registration path for them.
 - **Team Manager** is not a separate role or account. It is a `USER` referenced as `manager_user_id` on a `teams` row.
+- **Player Profile** remains optional and is entirely separate from the base `User` account.
 - **RBAC middleware**: `authenticate` validates the Bearer token and loads user + roles from DB. `authorizeRoles(...roles)` rejects with HTTP 403 if the user does not hold a required role.
 - Emails are normalized to lowercase before storage and lookup.
 
