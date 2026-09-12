@@ -8,6 +8,12 @@ import PlayerProfilePage from './pages/PlayerProfilePage';
 import SportsPage from './pages/SportsPage';
 import TeamsPage from './pages/TeamsPage';
 import TeamDetailsPage from './pages/TeamDetailsPage';
+import GroundsPage from './pages/GroundsPage';
+import GroundDetailsPage from './pages/GroundDetailsPage';
+import MyBookingsPage from './pages/MyBookingsPage';
+import BookingDetailsPage from './pages/BookingDetailsPage';
+import AdminGroundsPage from './pages/admin/AdminGroundsPage';
+import AdminGroundDetailsPage from './pages/admin/AdminGroundDetailsPage';
 
 export default function App() {
   const { user, loading } = useAuth();
@@ -29,6 +35,12 @@ export default function App() {
           <Route path="/sports" element={<SportsPage />} />
           <Route path="/teams" element={<TeamsPage />} />
           <Route path="/teams/:teamId" element={<TeamDetailsPage />} />
+          <Route path="/grounds" element={<GroundsPage />} />
+          <Route path="/grounds/:groundId" element={<GroundDetailsPage />} />
+          <Route path="/bookings" element={<MyBookingsPage />} />
+          <Route path="/bookings/:bookingId" element={<BookingDetailsPage />} />
+          <Route path="/admin/grounds" element={<AdminGroundsPage />} />
+          <Route path="/admin/grounds/:groundId" element={<AdminGroundDetailsPage />} />
         </Route>
       </Route>
     </Routes>

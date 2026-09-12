@@ -63,6 +63,44 @@ export default function Layout() {
                 >
                   Teams
                 </NavLink>
+                <NavLink 
+                  to="/grounds"
+                  className={({ isActive }) => 
+                    `inline-flex items-center border-b-2 px-1 pt-1 text-sm font-medium ${
+                      isActive && !location.pathname.startsWith('/admin')
+                        ? 'border-indigo-500 text-gray-900' 
+                        : 'border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700'
+                    }`
+                  }
+                >
+                  Grounds
+                </NavLink>
+                <NavLink 
+                  to="/bookings"
+                  className={({ isActive }) => 
+                    `inline-flex items-center border-b-2 px-1 pt-1 text-sm font-medium ${
+                      isActive 
+                        ? 'border-indigo-500 text-gray-900' 
+                        : 'border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700'
+                    }`
+                  }
+                >
+                  My Bookings
+                </NavLink>
+                {user?.roles?.includes('ADMIN') && (
+                  <NavLink 
+                    to="/admin/grounds"
+                    className={({ isActive }) => 
+                      `inline-flex items-center border-b-2 px-1 pt-1 text-sm font-medium ${
+                        location.pathname.startsWith('/admin/grounds')
+                          ? 'border-indigo-500 text-gray-900' 
+                          : 'border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700'
+                      }`
+                    }
+                  >
+                    Admin Grounds
+                  </NavLink>
+                )}
               </div>
             </div>
             
@@ -79,14 +117,14 @@ export default function Layout() {
           
           {/* Mobile menu */}
           <div className="sm:hidden flex space-x-4 py-3 border-t border-gray-200">
-            <NavLink 
-              to="/profile"
-              className={({ isActive }) => 
-                `block px-3 py-2 rounded-md text-base font-medium ${
-                  isActive ? 'bg-indigo-50 text-indigo-700' : 'text-gray-700 hover:bg-gray-50'
-                }`
-              }
-            >
+                <NavLink 
+                  to="/profile"
+                  className={() => 
+                    `block px-3 py-2 rounded-md text-base font-medium ${
+                      location.pathname === '/profile' ? 'bg-indigo-50 text-indigo-700' : 'text-gray-700 hover:bg-gray-50'
+                    }`
+                  }
+                >
               My Account
             </NavLink>
             <NavLink 
@@ -121,6 +159,44 @@ export default function Layout() {
             >
               Teams
             </NavLink>
+            <NavLink 
+              to="/grounds"
+              className={({ isActive }) => 
+                `block px-3 py-2 rounded-md text-base font-medium ${
+                  isActive && !location.pathname.startsWith('/admin')
+                    ? 'bg-indigo-50 text-indigo-700' 
+                    : 'text-gray-700 hover:bg-gray-50'
+                }`
+              }
+            >
+              Grounds
+            </NavLink>
+            <NavLink 
+              to="/bookings"
+              className={({ isActive }) => 
+                `block px-3 py-2 rounded-md text-base font-medium ${
+                  isActive 
+                    ? 'bg-indigo-50 text-indigo-700' 
+                    : 'text-gray-700 hover:bg-gray-50'
+                }`
+              }
+            >
+              My Bookings
+            </NavLink>
+            {user?.roles?.includes('ADMIN') && (
+              <NavLink 
+                to="/admin/grounds"
+                className={({ isActive }) => 
+                  `block px-3 py-2 rounded-md text-base font-medium ${
+                    location.pathname.startsWith('/admin/grounds')
+                      ? 'bg-indigo-50 text-indigo-700' 
+                      : 'text-gray-700 hover:bg-gray-50'
+                  }`
+                }
+              >
+                Admin Grounds
+              </NavLink>
+            )}
           </div>
         </div>
       </nav>
