@@ -22,6 +22,9 @@ router.post(
 // GET /api/tournaments/:tournamentId/configuration/validation — check configuration completeness
 router.get('/:tournamentId/configuration/validation', authenticate, asyncHandler(ctrl.validateConfiguration));
 
+// Eligibility Engine
+router.use('/:tournamentId/eligibility', require('./eligibility.routes'));
+
 // PATCH /api/tournaments/:tournamentId — authenticated; ownership checked in service
 router.patch('/:tournamentId', authenticate, asyncHandler(ctrl.updateTournament));
 
