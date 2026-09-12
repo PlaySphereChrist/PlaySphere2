@@ -64,6 +64,18 @@ export default function Layout() {
                   Teams
                 </NavLink>
                 <NavLink 
+                  to="/casual-games"
+                  className={({ isActive }) => 
+                    `inline-flex items-center border-b-2 px-1 pt-1 text-sm font-medium ${
+                      isActive || location.pathname.startsWith('/casual-games/')
+                        ? 'border-indigo-500 text-gray-900' 
+                        : 'border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700'
+                    }`
+                  }
+                >
+                  Casual Games
+                </NavLink>
+                <NavLink 
                   to="/grounds"
                   className={({ isActive }) => 
                     `inline-flex items-center border-b-2 px-1 pt-1 text-sm font-medium ${
@@ -158,6 +170,18 @@ export default function Layout() {
               }
             >
               Teams
+            </NavLink>
+            <NavLink 
+              to="/casual-games"
+              className={({ isActive }) => 
+                `block px-3 py-2 rounded-md text-base font-medium ${
+                  isActive || location.pathname.startsWith('/casual-games/')
+                    ? 'bg-indigo-50 text-indigo-700' 
+                    : 'text-gray-700 hover:bg-gray-50'
+                }`
+              }
+            >
+              Casual Games
             </NavLink>
             <NavLink 
               to="/grounds"

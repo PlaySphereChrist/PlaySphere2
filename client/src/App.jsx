@@ -14,6 +14,9 @@ import MyBookingsPage from './pages/MyBookingsPage';
 import BookingDetailsPage from './pages/BookingDetailsPage';
 import AdminGroundsPage from './pages/admin/AdminGroundsPage';
 import AdminGroundDetailsPage from './pages/admin/AdminGroundDetailsPage';
+import CasualGamesPage from './pages/CasualGamesPage';
+import CasualGameDetailsPage from './pages/CasualGameDetailsPage';
+import CasualGameForm from './pages/CasualGameForm';
 
 export default function App() {
   const { user, loading } = useAuth();
@@ -39,6 +42,10 @@ export default function App() {
           <Route path="/grounds/:groundId" element={<GroundDetailsPage />} />
           <Route path="/bookings" element={<MyBookingsPage />} />
           <Route path="/bookings/:bookingId" element={<BookingDetailsPage />} />
+          <Route path="/casual-games" element={<CasualGamesPage />} />
+          <Route path="/casual-games/create" element={<CasualGameForm />} />
+          <Route path="/casual-games/:gameId" element={<CasualGameDetailsPage />} />
+          <Route path="/casual-games/:gameId/edit" element={<CasualGameForm />} />
           <Route path="/admin/grounds" element={<AdminGroundsPage />} />
           <Route path="/admin/grounds/:groundId" element={<AdminGroundDetailsPage />} />
         </Route>
