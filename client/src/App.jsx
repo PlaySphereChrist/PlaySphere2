@@ -5,6 +5,7 @@ import ProtectedRoute from './components/ProtectedRoute';
 import LoginPage from './pages/LoginPage';
 import ProfilePage from './pages/ProfilePage';
 import PlayerProfilePage from './pages/PlayerProfilePage';
+import SportsPage from './pages/SportsPage';
 
 export default function App() {
   const { user, loading } = useAuth();
@@ -23,6 +24,7 @@ export default function App() {
           <Route path="/" element={<Navigate to="/profile" replace />} />
           <Route path="/profile" element={<ProfilePage />} />
           <Route path="/player-profile" element={<PlayerProfilePage />} />
+          <Route path="/sports" element={<SportsPage />} />
         </Route>
       </Route>
     </Routes>

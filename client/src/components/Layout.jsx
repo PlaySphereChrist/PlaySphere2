@@ -38,6 +38,18 @@ export default function Layout() {
                 >
                   Player Profile
                 </NavLink>
+                <NavLink 
+                  to="/sports"
+                  className={({ isActive }) => 
+                    `inline-flex items-center border-b-2 px-1 pt-1 text-sm font-medium ${
+                      isActive 
+                        ? 'border-indigo-500 text-gray-900' 
+                        : 'border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700'
+                    }`
+                  }
+                >
+                  Sports
+                </NavLink>
               </div>
             </div>
             
@@ -73,6 +85,16 @@ export default function Layout() {
               }
             >
               Player Profile
+            </NavLink>
+            <NavLink 
+              to="/sports"
+              className={({ isActive }) => 
+                `block px-3 py-2 rounded-md text-base font-medium ${
+                  isActive ? 'bg-indigo-50 text-indigo-700' : 'text-gray-700 hover:bg-gray-50'
+                }`
+              }
+            >
+              Sports
             </NavLink>
           </div>
         </div>
