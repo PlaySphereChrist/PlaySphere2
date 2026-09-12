@@ -19,6 +19,9 @@ router.post(
   asyncHandler(ctrl.createTournament)
 );
 
+// GET /api/tournaments/:tournamentId/configuration/validation — check configuration completeness
+router.get('/:tournamentId/configuration/validation', authenticate, asyncHandler(ctrl.validateConfiguration));
+
 // PATCH /api/tournaments/:tournamentId — authenticated; ownership checked in service
 router.patch('/:tournamentId', authenticate, asyncHandler(ctrl.updateTournament));
 

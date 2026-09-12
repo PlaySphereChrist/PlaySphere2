@@ -51,6 +51,18 @@ class TournamentsController {
     );
     res.json({ success: true, data: { tournament } });
   }
+
+  /**
+   * GET /api/tournaments/:tournamentId/configuration/validation
+   * Checks if tournament is ready to be published
+   */
+  async validateConfiguration(req, res) {
+    const validation = await tournamentsService.validateConfiguration(
+      req.params.tournamentId,
+      req.user
+    );
+    res.json({ success: true, data: validation });
+  }
 }
 
 module.exports = new TournamentsController();

@@ -365,6 +365,62 @@ class TournamentsService {
   }
 
   // -------------------------------------------------------------------------
+  // CONFIGURATION VALIDATION
+  // -------------------------------------------------------------------------
+  async validateConfiguration(tournamentId, requestingUser) {
+    const tournament = await this.getTournament(tournamentId, requestingUser);
+    return this._checkConfigurationCompleteness(tournament);
+  }
+
+  _checkConfigurationCompleteness(tournament) {
+    const missing = [];
+    const errors = [];
+
+    if (!tournament.registration_opens_at) missing.push('registration_opens_at');
+    if (!tournament.registration_closes_at) missing.push('registration_closes_at');
+    if (!tournament.starts_at) missing.push('starts_at');
+    if (!tournament.ends_at) missing.push('ends_at');
+    
+    if (!tournament.city && !tournament.venue_details) {
+      missing.push('venue_details');
+    }
+    
+    if (tournament.participation_type === 'team') {
+      if (!tournament.min_teams) missing.push('min_teams');
+      if (!tournament.max_teams) missing.push('max_teams');
+      if (tournament.min_teams && tournament.max_teams && tournament.min_teams > tournament.max_teams) {
+        errors.push('min_teams cannot exceed max_teams');
+      }
+    }
+
+    if (tournament.registration_opens_at && tournament.registration_closes_at) {
+      if (new Date(tournament.registration_opens_at) >= new Date(tournament.registration_closes_at)) {
+        errors.push('registration_opens_at must be before registration_closes_at');
+      }
+    }
+
+    if (tournament.starts_at && tournament.ends_at) {
+      if (new Date(tournament.starts_at) > new Date(tournament.ends_at)) {
+        errors.push('starts_at must be on or before ends_at');
+      }
+    }
+
+    if (tournament.registration_closes_at && tournament.starts_at) {
+      if (new Date(tournament.registration_closes_at) > new Date(tournament.starts_at)) {
+        errors.push('registration_closes_at must be on or before starts_at');
+      }
+    }
+
+    const valid = missing.length === 0 && errors.length === 0;
+
+    return {
+      valid,
+      missing,
+      errors
+    };
+  }
+
+  // -------------------------------------------------------------------------
   // STATUS TRANSITION — validated, transactional, with history
   // -------------------------------------------------------------------------
   async transitionStatus(tournamentId, requestingUser, newStatus, reason = null) {
@@ -372,9 +428,9 @@ class TournamentsService {
     try {
       await client.query('BEGIN');
 
-      // Lock the row
+      // Lock the row and get all fields for validation
       const lockRes = await client.query(
-        `SELECT id, status, organizer_user_id FROM tournaments WHERE id = $1 FOR UPDATE`,
+        `SELECT * FROM tournaments WHERE id = $1 FOR UPDATE`,
         [tournamentId]
       );
       if (!lockRes.rows.length) throw this._notFound('Tournament not found');
@@ -395,6 +451,15 @@ class TournamentsService {
           `Cannot transition from "${currentStatus}" to "${newStatus}". ` +
           `Allowed transitions: ${allowed.length ? allowed.join(', ') : 'none'}`
         );
+      }
+
+      // Enforce configuration completeness for transitioning out of draft
+      if (currentStatus === 'draft' && newStatus === 'registration_open') {
+        const configCheck = this._checkConfigurationCompleteness(tournament);
+        if (!configCheck.valid) {
+          throw this._badRequest('Tournament configuration is incomplete or invalid. Missing: ' + 
+                                 configCheck.missing.join(', ') + '. Errors: ' + configCheck.errors.join(', '));
+        }
       }
 
       // Update tournament status
