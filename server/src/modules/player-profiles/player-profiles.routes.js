@@ -14,4 +14,7 @@ router.patch('/me', authenticate, asyncHandler(profilesController.updateMyProfil
 // DELETE /me is intentionally not implemented in Phase 4A.
 // See player-profiles.service.js for the rationale (FK integrity with team_members).
 
+// Sub-resource routes
+router.use('/me/sports', require('../sports/player-sports.routes'));
+
 module.exports = router;
