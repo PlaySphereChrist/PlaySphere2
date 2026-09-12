@@ -23,6 +23,7 @@ const env = {
   // Razorpay (Placeholders for future implementation)
   RAZORPAY_KEY_ID: process.env.RAZORPAY_KEY_ID,
   RAZORPAY_KEY_SECRET: process.env.RAZORPAY_KEY_SECRET,
+  RAZORPAY_WEBHOOK_SECRET: process.env.RAZORPAY_WEBHOOK_SECRET,
 };
 
 // Validate critical variables — fail fast at startup

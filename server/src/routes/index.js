@@ -37,5 +37,6 @@ router.use('/teams', require('../modules/teams/teams.routes'));
 router.use('/team-invitations', require('../modules/teams/team-invitations.routes'));
 router.use('/grounds', require('../modules/grounds/grounds.routes'));
 router.use('/ground-bookings', require('../modules/grounds/ground-bookings.routes'));
+router.use('/payments', require('../modules/payments/payments.routes'));
 
 module.exports = router;
