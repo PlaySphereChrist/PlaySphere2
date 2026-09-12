@@ -33,5 +33,7 @@ router.use('/auth', require('../modules/auth/auth.routes'));
 router.use('/users', require('../modules/users/users.routes'));
 router.use('/player-profiles', require('../modules/player-profiles/player-profiles.routes'));
 router.use('/sports', require('../modules/sports/sports.routes'));
+router.use('/teams', require('../modules/teams/teams.routes'));
+router.use('/team-invitations', require('../modules/teams/team-invitations.routes'));
 
 module.exports = router;
