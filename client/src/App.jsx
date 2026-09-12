@@ -6,6 +6,8 @@ import LoginPage from './pages/LoginPage';
 import ProfilePage from './pages/ProfilePage';
 import PlayerProfilePage from './pages/PlayerProfilePage';
 import SportsPage from './pages/SportsPage';
+import TeamsPage from './pages/TeamsPage';
+import TeamDetailsPage from './pages/TeamDetailsPage';
 
 export default function App() {
   const { user, loading } = useAuth();
@@ -25,6 +27,8 @@ export default function App() {
           <Route path="/profile" element={<ProfilePage />} />
           <Route path="/player-profile" element={<PlayerProfilePage />} />
           <Route path="/sports" element={<SportsPage />} />
+          <Route path="/teams" element={<TeamsPage />} />
+          <Route path="/teams/:teamId" element={<TeamDetailsPage />} />
         </Route>
       </Route>
     </Routes>
