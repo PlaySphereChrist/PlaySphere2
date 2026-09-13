@@ -43,5 +43,6 @@ router.use('/tournaments',  require('../modules/tournaments/tournaments.routes')
 router.use('/registrations', require('../modules/tournaments/my-registrations.routes'));
 router.use('/matches', require('../modules/matches/matches.routes'));
 router.use('/performance-events', require('../modules/performance/performance.routes'));
+router.use('/statistics', require('../modules/stats/statistics.routes'));
 
 module.exports = router;
