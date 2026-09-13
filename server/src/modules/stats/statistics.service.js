@@ -358,13 +358,17 @@ class StatisticsService {
     try {
       await client.query('BEGIN');
 
-      // 2. Fetch the sport_id for the tournament (needed for player_statistics.sport_id)
+      // 1b. Acquire row-level lock on the tournament to serialize concurrent recalculations
+      await client.query('SELECT 1 FROM tournaments WHERE id = $1 FOR UPDATE', [tournamentId]);
+
+      // 2. Fetch the sport_id for the tournament
       const sportId = tournament.sport_id;
 
+      // 2b. Wipe stale statistics for this tournament to ensure we don't leave orphaned derived stats
+      await client.query('DELETE FROM player_statistics WHERE tournament_id = $1', [tournamentId]);
+      await client.query('DELETE FROM team_statistics WHERE tournament_id = $1', [tournamentId]);
+
       // 3. Aggregate player-level stats from performance events
-      //    Only official tournament matches (tournament_id = $1, casual_game_id IS NULL)
-      //    For is_cumulative=true: SUM values.
-      //    For is_cumulative=false: take value from the event with the latest recorded_at.
       const playerAggRes = await client.query(`
         WITH ordered_events AS (
           SELECT
@@ -393,25 +397,20 @@ class StatisticsService {
           is_cumulative,
           CASE
             WHEN is_cumulative THEN SUM(COALESCE(value, 0))
-            ELSE MAX(value) FILTER (WHERE rn = 1)
+            ELSE MAX(COALESCE(value, 0)) FILTER (WHERE rn = 1)
           END AS aggregated_value,
           NOW() AS computed_at
         FROM ordered_events
         GROUP BY player_profile_id, stat_key, is_cumulative
       `, [tournamentId]);
 
-      // 4. Upsert player statistics
+      // 4. Insert player statistics
       let playerUpsertCount = 0;
       for (const row of playerAggRes.rows) {
         await client.query(`
           INSERT INTO player_statistics
             (player_profile_id, sport_id, tournament_id, stat_key, stat_value, computed_at)
           VALUES ($1, $2, $3, $4, $5, $6)
-          ON CONFLICT (player_profile_id, sport_id, stat_key, COALESCE((tournament_id)::text, 'NULL'::text), COALESCE((season_year)::text, 'NULL'::text))
-          DO UPDATE SET
-            stat_value  = EXCLUDED.stat_value,
-            computed_at = EXCLUDED.computed_at,
-            updated_at  = NOW()
         `, [
           row.player_profile_id,
           sportId,
@@ -423,8 +422,7 @@ class StatisticsService {
         playerUpsertCount++;
       }
 
-      // 5. Aggregate team-level stats from performance_event_players.team_id
-      //    Only for applies_to IN ('team','both') stat definitions
+      // 5. Aggregate team-level stats
       const teamAggRes = await client.query(`
         WITH ordered_team_events AS (
           SELECT
@@ -453,24 +451,20 @@ class StatisticsService {
           is_cumulative,
           CASE
             WHEN is_cumulative THEN SUM(COALESCE(value, 0))
-            ELSE MAX(value) FILTER (WHERE rn = 1)
+            ELSE MAX(COALESCE(value, 0)) FILTER (WHERE rn = 1)
           END AS aggregated_value,
           NOW() AS computed_at
         FROM ordered_team_events
         GROUP BY team_id, stat_key, is_cumulative
       `, [tournamentId]);
 
+      // 6. Insert team statistics
       let teamUpsertCount = 0;
       for (const row of teamAggRes.rows) {
         await client.query(`
           INSERT INTO team_statistics
             (team_id, sport_id, tournament_id, stat_key, stat_value, computed_at)
           VALUES ($1, $2, $3, $4, $5, $6)
-          ON CONFLICT (team_id, sport_id, stat_key, COALESCE((tournament_id)::text, 'NULL'::text), COALESCE((season_year)::text, 'NULL'::text))
-          DO UPDATE SET
-            stat_value  = EXCLUDED.stat_value,
-            computed_at = EXCLUDED.computed_at,
-            updated_at  = NOW()
         `, [
           row.team_id,
           sportId,
