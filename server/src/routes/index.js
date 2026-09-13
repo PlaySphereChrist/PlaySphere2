@@ -40,5 +40,6 @@ router.use('/ground-bookings', require('../modules/grounds/ground-bookings.route
 router.use('/payments', require('../modules/payments/payments.routes'));
 router.use('/casual-games', require('../modules/casual-games/casual-games.routes'));
 router.use('/tournaments',  require('../modules/tournaments/tournaments.routes'));
+router.use('/registrations', require('../modules/tournaments/my-registrations.routes'));
 
 module.exports = router;
