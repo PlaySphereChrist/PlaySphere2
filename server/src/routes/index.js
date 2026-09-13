@@ -42,5 +42,6 @@ router.use('/casual-games', require('../modules/casual-games/casual-games.routes
 router.use('/tournaments',  require('../modules/tournaments/tournaments.routes'));
 router.use('/registrations', require('../modules/tournaments/my-registrations.routes'));
 router.use('/matches', require('../modules/matches/matches.routes'));
+router.use('/performance-events', require('../modules/performance/performance.routes'));
 
 module.exports = router;

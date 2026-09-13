@@ -21,4 +21,7 @@ router.post('/:matchId/complete', asyncHandler(ctrl.completeMatch));
 // POST /api/matches/:matchId/cancel
 router.post('/:matchId/cancel', asyncHandler(ctrl.cancelMatch));
 
+// Performance events nested under match
+router.use('/:matchId/performance-events', require('../performance/match-performance.routes'));
+
 module.exports = router;
