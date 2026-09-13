@@ -28,6 +28,12 @@ router.use('/:tournamentId/eligibility', require('./eligibility.routes'));
 // Registrations
 router.use('/:tournamentId/registrations', require('./registration.routes'));
 
+// Matches
+router.use('/:tournamentId/matches', require('../matches/tournament-matches.routes'));
+
+// Fixtures
+router.use('/:tournamentId/fixtures', require('../fixtures/tournament-fixtures.routes'));
+
 // Waitlist
 router.use('/:tournamentId/waitlist', require('./waitlist.routes'));
 

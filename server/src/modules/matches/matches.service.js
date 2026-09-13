@@ -1,0 +1,256 @@
+'use strict';
+
+const { pool, query } = require('../../config/database');
+const tournamentsService = require('../tournaments/tournaments.service');
+
+class MatchesService {
+
+  _notFound(msg)   { const e = new Error(msg); e.statusCode = 404; return e; }
+  _badRequest(msg) { const e = new Error(msg); e.statusCode = 400; return e; }
+  _forbidden(msg)  { const e = new Error(msg); e.statusCode = 403; return e; }
+  _conflict(msg)   { const e = new Error(msg); e.statusCode = 409; return e; }
+
+  // ---------------------------------------------------------------------------
+  // GET /api/tournaments/:tournamentId/matches
+  // Requires visibility access (delegates to tournamentsService.getTournament)
+  // ---------------------------------------------------------------------------
+  async getTournamentMatches(tournamentId, requestingUser) {
+    await tournamentsService.getTournament(tournamentId, requestingUser);
+
+    const res = await query(`
+      SELECT
+        m.id,
+        m.fixture_id,
+        m.tournament_id,
+        m.sport_id,
+        m.ground_id,
+        m.scheduled_at,
+        m.started_at,
+        m.ended_at,
+        m.status,
+        m.result_summary,
+        m.winner_registration_id,
+        m.notes,
+        m.created_at,
+        m.updated_at,
+        f.round_number,
+        f.round_name,
+        f.match_number
+      FROM matches m
+      LEFT JOIN fixtures f ON m.fixture_id = f.id
+      WHERE m.tournament_id = $1
+      ORDER BY f.round_number ASC NULLS LAST, f.match_number ASC NULLS LAST, m.scheduled_at ASC NULLS LAST
+    `, [tournamentId]);
+
+    return res.rows;
+  }
+
+  // ---------------------------------------------------------------------------
+  // GET /api/matches/:matchId
+  // Delegates visibility to tournamentsService for tournament matches
+  // ---------------------------------------------------------------------------
+  async getMatch(matchId, requestingUser) {
+    const res = await query(`
+      SELECT
+        m.*,
+        f.round_number,
+        f.round_name,
+        f.match_number
+      FROM matches m
+      LEFT JOIN fixtures f ON m.fixture_id = f.id
+      WHERE m.id = $1
+    `, [matchId]);
+
+    if (!res.rows.length) {
+      throw this._notFound('Match not found');
+    }
+
+    const match = res.rows[0];
+
+    // Enforce tournament visibility rules for tournament matches
+    if (match.tournament_id) {
+      await tournamentsService.getTournament(match.tournament_id, requestingUser);
+    }
+
+    return match;
+  }
+
+  // ---------------------------------------------------------------------------
+  // GET /api/matches/:matchId/participants
+  // ---------------------------------------------------------------------------
+  async getMatchParticipants(matchId, requestingUser) {
+    await this.getMatch(matchId, requestingUser);
+
+    const res = await query(`
+      SELECT
+        mp.id,
+        mp.match_id,
+        mp.registration_id,
+        mp.team_id,
+        mp.player_profile_id,
+        mp.side,
+        mp.score,
+        mp.result,
+        mp.created_at,
+        t.name   AS team_name,
+        pp.display_name,
+        tr.registration_name
+      FROM match_participants mp
+      LEFT JOIN teams t                    ON mp.team_id          = t.id
+      LEFT JOIN player_profiles pp         ON mp.player_profile_id = pp.id
+      LEFT JOIN tournament_registrations tr ON mp.registration_id  = tr.id
+      WHERE mp.match_id = $1
+      ORDER BY mp.side ASC
+    `, [matchId]);
+
+    return res.rows;
+  }
+
+  // ---------------------------------------------------------------------------
+  // POST /api/tournaments/:tournamentId/matches/from-fixture/:fixtureId
+  // Organizer (own tournament) or Admin only.
+  // Validates: tournament owned, fixture belongs to tournament, no duplicate
+  // match, participants are approved registrations from the same tournament.
+  // Uses a single DB transaction.
+  // ---------------------------------------------------------------------------
+  async createMatchFromFixture(tournamentId, fixtureId, data, requestingUser) {
+    // 1. Tournament visibility + ownership check
+    const tournament = await tournamentsService.getTournament(tournamentId, requestingUser);
+
+    const isAdmin       = requestingUser?.roles?.includes('ADMIN');
+    const isOwnOrganizer = requestingUser?.id === tournament.organizer_user_id;
+
+    if (!isAdmin && !isOwnOrganizer) {
+      throw this._forbidden('Only the organizer or an admin can create official matches');
+    }
+
+    // 2. Basic payload validation before touching the DB
+    if (!data.participants || !Array.isArray(data.participants) || data.participants.length === 0) {
+      throw this._badRequest('At least one participant is required');
+    }
+
+    const regIds = data.participants.map(p => p.registration_id).filter(Boolean);
+    if (regIds.length !== data.participants.length) {
+      throw this._badRequest('Every participant must include a registration_id');
+    }
+
+    if (new Set(regIds).size !== regIds.length) {
+      throw this._badRequest('Duplicate registrations provided for participants');
+    }
+
+    for (const p of data.participants) {
+      if (!['home', 'away'].includes(p.side)) {
+        throw this._badRequest('Participant side must be "home" or "away"');
+      }
+    }
+
+    // 3. Transactional write
+    const client = await pool.connect();
+    try {
+      await client.query('BEGIN');
+
+      // 3a. Verify fixture exists, belongs to this tournament, acquire row lock
+      const fixRes = await client.query(
+        'SELECT * FROM fixtures WHERE id = $1 FOR UPDATE',
+        [fixtureId]
+      );
+      if (!fixRes.rows.length) {
+        throw this._notFound('Fixture not found');
+      }
+      const fixture = fixRes.rows[0];
+      if (fixture.tournament_id !== tournamentId) {
+        throw this._badRequest('Fixture does not belong to the specified tournament');
+      }
+
+      // 3b. Prevent duplicate match for the same fixture
+      const dupCheck = await client.query(
+        'SELECT id FROM matches WHERE fixture_id = $1',
+        [fixtureId]
+      );
+      if (dupCheck.rows.length > 0) {
+        throw this._conflict('A match already exists for this fixture');
+      }
+
+      // 3c. Validate registrations — must all belong to this tournament, be approved
+      const regRes = await client.query(`
+        SELECT id, tournament_id, status, team_id, individual_player_profile_id
+        FROM tournament_registrations
+        WHERE id = ANY($1)
+        FOR SHARE
+      `, [regIds]);
+
+      if (regRes.rows.length !== regIds.length) {
+        throw this._badRequest('One or more registration_ids are invalid');
+      }
+
+      const registrationsMap = {};
+      for (const reg of regRes.rows) {
+        if (reg.tournament_id !== tournamentId) {
+          throw this._badRequest(
+            'Participant registration does not belong to this tournament'
+          );
+        }
+        if (reg.status !== 'approved') {
+          throw this._badRequest(
+            `Registration ${reg.id} has status "${reg.status}"; only approved registrations may participate`
+          );
+        }
+        registrationsMap[reg.id] = reg;
+      }
+
+      // 3d. Insert match record
+      const matchRes = await client.query(`
+        INSERT INTO matches (
+          fixture_id,
+          tournament_id,
+          sport_id,
+          ground_id,
+          scheduled_at,
+          status,
+          recorded_by_user_id
+        ) VALUES ($1, $2, $3, $4, $5, 'scheduled', $6)
+        RETURNING *
+      `, [
+        fixtureId,
+        tournamentId,
+        tournament.sport_id,
+        fixture.ground_id   || null,
+        fixture.scheduled_at || null,
+        requestingUser.id
+      ]);
+
+      const match = matchRes.rows[0];
+
+      // 3e. Insert match_participants
+      for (const p of data.participants) {
+        const reg = registrationsMap[p.registration_id];
+        await client.query(`
+          INSERT INTO match_participants (
+            match_id,
+            registration_id,
+            team_id,
+            player_profile_id,
+            side
+          ) VALUES ($1, $2, $3, $4, $5)
+        `, [
+          match.id,
+          reg.id,
+          reg.team_id                      || null,
+          reg.individual_player_profile_id || null,
+          p.side
+        ]);
+      }
+
+      await client.query('COMMIT');
+      return match;
+
+    } catch (err) {
+      await client.query('ROLLBACK');
+      throw err;
+    } finally {
+      client.release();
+    }
+  }
+}
+
+module.exports = new MatchesService();
