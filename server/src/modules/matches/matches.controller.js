@@ -24,3 +24,18 @@ exports.createMatchFromFixture = async (req, res) => {
   );
   res.status(201).json({ success: true, data: { match } });
 };
+
+exports.startMatch = async (req, res) => {
+  const match = await matchesService.startMatch(req.params.matchId, req.user);
+  res.status(200).json({ success: true, data: { match } });
+};
+
+exports.completeMatch = async (req, res) => {
+  const match = await matchesService.completeMatch(req.params.matchId, req.body, req.user);
+  res.status(200).json({ success: true, data: { match } });
+};
+
+exports.cancelMatch = async (req, res) => {
+  const match = await matchesService.cancelMatch(req.params.matchId, req.body, req.user);
+  res.status(200).json({ success: true, data: { match } });
+};

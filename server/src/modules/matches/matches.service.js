@@ -251,6 +251,191 @@ class MatchesService {
       client.release();
     }
   }
+
+  // ---------------------------------------------------------------------------
+  // HELPER: Verify match authorization
+  // ---------------------------------------------------------------------------
+  async _verifyMatchAuthorization(match, requestingUser) {
+    if (!match.tournament_id) {
+      // For now, only tournament matches are supported. Casual games would be checked here.
+      throw this._badRequest('Only tournament matches are currently supported for lifecycle events');
+    }
+
+    const tournament = await tournamentsService.getTournament(match.tournament_id, requestingUser);
+
+    const isAdmin = requestingUser?.roles?.includes('ADMIN');
+    const isOwnOrganizer = requestingUser?.id === tournament.organizer_user_id;
+
+    if (!isAdmin && !isOwnOrganizer) {
+      throw this._forbidden('Only the organizer or an admin can modify this match');
+    }
+  }
+
+  // ---------------------------------------------------------------------------
+  // POST /api/matches/:matchId/start
+  // SCHEDULED -> in_progress
+  // ---------------------------------------------------------------------------
+  async startMatch(matchId, requestingUser) {
+    const client = await pool.connect();
+    try {
+      await client.query('BEGIN');
+
+      const matchRes = await client.query('SELECT * FROM matches WHERE id = $1 FOR UPDATE', [matchId]);
+      if (!matchRes.rows.length) {
+        throw this._notFound('Match not found');
+      }
+      const match = matchRes.rows[0];
+
+      await this._verifyMatchAuthorization(match, requestingUser);
+
+      if (match.status !== 'scheduled') {
+        throw this._badRequest(`Cannot start match from status "${match.status}"`);
+      }
+
+      const updateRes = await client.query(`
+        UPDATE matches
+        SET status = 'in_progress', started_at = NOW(), updated_at = NOW()
+        WHERE id = $1
+        RETURNING *
+      `, [matchId]);
+
+      await client.query('COMMIT');
+      return updateRes.rows[0];
+    } catch (err) {
+      await client.query('ROLLBACK');
+      throw err;
+    } finally {
+      client.release();
+    }
+  }
+
+  // ---------------------------------------------------------------------------
+  // POST /api/matches/:matchId/complete
+  // in_progress -> completed
+  // ---------------------------------------------------------------------------
+  async completeMatch(matchId, data, requestingUser) {
+    const client = await pool.connect();
+    try {
+      await client.query('BEGIN');
+
+      const matchRes = await client.query('SELECT * FROM matches WHERE id = $1 FOR UPDATE', [matchId]);
+      if (!matchRes.rows.length) {
+        throw this._notFound('Match not found');
+      }
+      const match = matchRes.rows[0];
+
+      await this._verifyMatchAuthorization(match, requestingUser);
+
+      if (match.status !== 'in_progress') {
+        throw this._badRequest(`Cannot complete match from status "${match.status}"`);
+      }
+
+      // Validate winner if provided
+      if (data.winner_registration_id) {
+        const participantCheck = await client.query(
+          'SELECT id FROM match_participants WHERE match_id = $1 AND registration_id = $2 FOR SHARE',
+          [matchId, data.winner_registration_id]
+        );
+        if (!participantCheck.rows.length) {
+          throw this._badRequest('Winner registration_id must be a participant in this match');
+        }
+      }
+
+      // Update the match itself
+      const updateMatchRes = await client.query(`
+        UPDATE matches
+        SET
+          status = 'completed',
+          ended_at = NOW(),
+          result_summary = COALESCE($2, result_summary),
+          winner_registration_id = $3,
+          updated_at = NOW()
+        WHERE id = $1
+        RETURNING *
+      `, [
+        matchId,
+        data.result_summary ? JSON.stringify(data.result_summary) : null,
+        data.winner_registration_id || null
+      ]);
+
+      // Update participants if data is provided
+      if (data.participants && Array.isArray(data.participants)) {
+        for (const p of data.participants) {
+          if (!p.registration_id) continue;
+
+          if (p.result && !['win', 'loss', 'draw', 'walkover', 'abandoned'].includes(p.result)) {
+             throw this._badRequest(`Invalid participant result: ${p.result}`);
+          }
+
+          await client.query(`
+            UPDATE match_participants
+            SET
+              score = COALESCE($1, score),
+              result = COALESCE($2, result),
+              updated_at = NOW()
+            WHERE match_id = $3 AND registration_id = $4
+          `, [
+            p.score ? JSON.stringify(p.score) : null,
+            p.result || null,
+            matchId,
+            p.registration_id
+          ]);
+        }
+      }
+
+      await client.query('COMMIT');
+      return updateMatchRes.rows[0];
+    } catch (err) {
+      await client.query('ROLLBACK');
+      throw err;
+    } finally {
+      client.release();
+    }
+  }
+
+  // ---------------------------------------------------------------------------
+  // POST /api/matches/:matchId/cancel
+  // scheduled -> cancelled
+  // ---------------------------------------------------------------------------
+  async cancelMatch(matchId, data, requestingUser) {
+    const client = await pool.connect();
+    try {
+      await client.query('BEGIN');
+
+      const matchRes = await client.query('SELECT * FROM matches WHERE id = $1 FOR UPDATE', [matchId]);
+      if (!matchRes.rows.length) {
+        throw this._notFound('Match not found');
+      }
+      const match = matchRes.rows[0];
+
+      await this._verifyMatchAuthorization(match, requestingUser);
+
+      if (match.status !== 'scheduled') {
+        throw this._badRequest(`Cannot cancel match from status "${match.status}"`);
+      }
+
+      // Append cancellation reason to notes or just replace if null
+      let newNotes = match.notes;
+      if (data.reason) {
+        newNotes = newNotes ? `${newNotes}\nCancellation reason: ${data.reason}` : `Cancellation reason: ${data.reason}`;
+      }
+
+      const updateRes = await client.query(`
+        UPDATE matches
+        SET status = 'cancelled', notes = $2, updated_at = NOW()
+        WHERE id = $1
+        RETURNING *
+      `, [matchId, newNotes || null]);
+
+      await client.query('COMMIT');
+      return updateRes.rows[0];
+    } catch (err) {
+      await client.query('ROLLBACK');
+      throw err;
+    } finally {
+      client.release();
+    }
+  }
 }
 
 module.exports = new MatchesService();
