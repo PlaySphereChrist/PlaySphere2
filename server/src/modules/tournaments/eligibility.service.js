@@ -135,6 +135,22 @@ class EligibilityService {
     // Only organizer or admin can trigger an evaluation for a candidate.
     await this._enforceOrganizer(tournamentId, user);
 
+    const client = await pool.connect();
+    try {
+      await client.query('BEGIN');
+      const result = await this.evaluateCandidateInternal(client, tournamentId, candidateData);
+      await client.query('COMMIT');
+      return result;
+    } catch (err) {
+      await client.query('ROLLBACK');
+      throw err;
+    } finally {
+      client.release();
+    }
+  }
+
+  // Internal evaluation engine - no authorization checks, requires active transaction client
+  async evaluateCandidateInternal(client, tournamentId, candidateData) {
     const { team_id, player_profile_id } = candidateData;
     if (!team_id && !player_profile_id) {
       throw this._badRequest('Must provide either team_id or player_profile_id');
@@ -143,17 +159,21 @@ class EligibilityService {
       throw this._badRequest('Cannot provide both team_id and player_profile_id');
     }
 
-    const rules = await this.listRules(tournamentId, user);
+    const rulesRes = await client.query(
+      `SELECT * FROM tournament_eligibility_rules WHERE tournament_id = $1 ORDER BY created_at ASC`,
+      [tournamentId]
+    );
+    const rules = rulesRes.rows;
     
     // Fetch candidate demographic info
     let candidateInfo = { profiles: [] };
     if (team_id) {
       // Validate team exists
-      const teamRes = await query('SELECT name FROM teams WHERE id = $1', [team_id]);
+      const teamRes = await client.query('SELECT name FROM teams WHERE id = $1', [team_id]);
       if (!teamRes.rows.length) throw this._notFound('Team not found');
       
       // Fetch all team members' profiles
-      const membersRes = await query(
+      const membersRes = await client.query(
         `SELECT pp.id, pp.date_of_birth, pp.gender, pp.city 
          FROM team_members tm
          JOIN player_profiles pp ON tm.player_profile_id = pp.id
@@ -166,7 +186,7 @@ class EligibilityService {
       }
     } else {
       // Fetch individual profile
-      const profRes = await query(
+      const profRes = await client.query(
         `SELECT id, date_of_birth, gender, city FROM player_profiles WHERE id = $1`,
         [player_profile_id]
       );
@@ -174,76 +194,63 @@ class EligibilityService {
       candidateInfo.profiles = profRes.rows;
     }
 
-    const client = await pool.connect();
-    try {
-      await client.query('BEGIN');
-      
-      // Clean previous automatic evaluations for this candidate/tournament
-      if (team_id) {
-        await client.query('DELETE FROM eligibility_evaluations WHERE tournament_id = $1 AND team_id = $2', [tournamentId, team_id]);
-      } else {
-        await client.query('DELETE FROM eligibility_evaluations WHERE tournament_id = $1 AND player_profile_id = $2 AND team_id IS NULL', [tournamentId, player_profile_id]);
-      }
-
-      let allPassed = true;
-      const evaluationResults = [];
-
-      for (const rule of rules) {
-        const result = this._evaluateRule(rule, candidateInfo);
-        
-        if (rule.is_mandatory && result.passed !== true) {
-          allPassed = false;
-        }
-
-        const evalResultStr = result.passed === true ? 'pass' : (result.passed === false ? 'fail' : 'pending');
-
-        const insertRes = await client.query(
-          `INSERT INTO eligibility_evaluations
-           (tournament_id, team_id, player_profile_id, rule_id, result, notes, evaluated_at)
-           VALUES ($1, $2, $3, $4, $5, $6, NOW()) RETURNING *`,
-          [
-            tournamentId,
-            team_id || null,
-            player_profile_id || null,
-            rule.id,
-            evalResultStr,
-            result.reason
-          ]
-        );
-        evaluationResults.push({
-          rule,
-          result: insertRes.rows[0]
-        });
-      }
-
-      await client.query('COMMIT');
-
-      // Fetch any existing override to provide effective eligibility
-      const override = await this._getActiveOverride(tournamentId, team_id, player_profile_id);
-
-      let effective_eligible = allPassed;
-      if (override) {
-        effective_eligible = (override.override_type === 'approve');
-      }
-
-      return {
-        automatic_eligible: allPassed,
-        override: override ? {
-          eligible: override.override_type === 'approve',
-          reason: override.reason,
-          by: override.overridden_by_name,
-          at: override.created_at
-        } : null,
-        effective_eligible,
-        details: evaluationResults
-      };
-
-    } catch (err) {
-      await client.query('ROLLBACK');
-      throw err;
-    } finally {
-      client.release();
+    // Clean previous automatic evaluations for this candidate/tournament
+    if (team_id) {
+      await client.query('DELETE FROM eligibility_evaluations WHERE tournament_id = $1 AND team_id = $2', [tournamentId, team_id]);
+    } else {
+      await client.query('DELETE FROM eligibility_evaluations WHERE tournament_id = $1 AND player_profile_id = $2 AND team_id IS NULL', [tournamentId, player_profile_id]);
     }
+
+    let allPassed = true;
+    const evaluationResults = [];
+
+    for (const rule of rules) {
+      const result = this._evaluateRule(rule, candidateInfo);
+
+      if (rule.is_mandatory && result.passed !== true) {
+        allPassed = false;
+      }
+
+      const evalResultStr = result.passed === true ? 'pass' : (result.passed === false ? 'fail' : 'pending');
+
+      const insertRes = await client.query(
+        `INSERT INTO eligibility_evaluations
+         (tournament_id, team_id, player_profile_id, rule_id, result, notes, evaluated_at)
+         VALUES ($1, $2, $3, $4, $5, $6, NOW()) RETURNING *`,
+        [
+          tournamentId,
+          team_id || null,
+          player_profile_id || null,
+          rule.id,
+          evalResultStr,
+          result.reason
+        ]
+      );
+      evaluationResults.push({
+        rule,
+        result: insertRes.rows[0]
+      });
+    }
+
+    // Fetch any existing override to provide effective eligibility
+    const override = await this._getActiveOverride(tournamentId, team_id, player_profile_id, client);
+
+    let effective_eligible = allPassed;
+    if (override) {
+      effective_eligible = (override.override_type === 'approve');
+    }
+
+    return {
+      automatic_eligible: allPassed,
+      override: override ? {
+        eligible: override.override_type === 'approve',
+        reason: override.reason,
+        by: override.overridden_by_name,
+        at: override.created_at
+      } : null,
+      effective_eligible,
+      details: evaluationResults
+    };
   }
 
   _evaluateRule(rule, candidateInfo) {
@@ -318,7 +325,8 @@ class EligibilityService {
   // OVERRIDES
   // ---------------------------------------------------------------------------
 
-  async _getActiveOverride(tournamentId, teamId, playerProfileId) {
+  async _getActiveOverride(tournamentId, teamId, playerProfileId, client = null) {
+    const executeQuery = client ? client.query.bind(client) : query;
     // Assumes most recent override dictates the state, or we just fetch the latest
     const params = [tournamentId];
     let candidateClause = '';
@@ -331,7 +339,7 @@ class EligibilityService {
       candidateClause = `AND individual_player_profile_id = $2 AND team_id IS NULL`;
     }
 
-    const res = await query(
+    const res = await executeQuery(
       `SELECT o.*, u.email as overridden_by_name 
        FROM eligibility_overrides o
        JOIN users u ON o.overridden_by_user_id = u.id

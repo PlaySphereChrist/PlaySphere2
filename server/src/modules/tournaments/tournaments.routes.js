@@ -25,6 +25,12 @@ router.get('/:tournamentId/configuration/validation', authenticate, asyncHandler
 // Eligibility Engine
 router.use('/:tournamentId/eligibility', require('./eligibility.routes'));
 
+// Registrations
+router.use('/:tournamentId/registrations', require('./registration.routes'));
+
+// Waitlist
+router.use('/:tournamentId/waitlist', require('./waitlist.routes'));
+
 // PATCH /api/tournaments/:tournamentId — authenticated; ownership checked in service
 router.patch('/:tournamentId', authenticate, asyncHandler(ctrl.updateTournament));
 
