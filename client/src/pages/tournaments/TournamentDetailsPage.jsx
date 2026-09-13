@@ -4,20 +4,19 @@ import { api } from '../../lib/api';
 import Spinner from '../../components/Spinner';
 import ErrorMessage from '../../components/ErrorMessage';
 import TournamentStatusBadge from '../../components/TournamentStatusBadge';
-import { useAuth } from '../../store/AuthContext';
 
 export default function TournamentDetailsPage() {
   const { tournamentId } = useParams();
-  
-  
+
+
   const [tournament, setTournament] = useState(null);
   const [myRegistration, setMyRegistration] = useState(null);
   const [myWaitlist, setMyWaitlist] = useState(null);
   const [myTeams, setMyTeams] = useState([]);
-  
+
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
-  
+
   const [regLoading, setRegLoading] = useState(false);
   const [regError, setRegError] = useState('');
   const [selectedTeamId, setSelectedTeamId] = useState('');
@@ -26,10 +25,10 @@ export default function TournamentDetailsPage() {
     try {
       setLoading(true);
       setError('');
-      
+
       const res = await api.get(`/tournaments/${tournamentId}`);
       setTournament(res.data.tournament);
-      
+
       // Load registration status
       try {
         const regRes = await api.get(`/tournaments/${tournamentId}/registrations/my`);
@@ -37,7 +36,7 @@ export default function TournamentDetailsPage() {
       } catch (e) {
         if (e.status !== 404) console.error(e);
       }
-      
+
       // Load waitlist status
       try {
         const waitRes = await api.get(`/tournaments/${tournamentId}/waitlist/my`);
@@ -45,13 +44,13 @@ export default function TournamentDetailsPage() {
       } catch (e) {
         if (e.status !== 404) console.error(e);
       }
-      
+
       // If team tournament, load user's teams
       if (res.data.tournament.participation_type === 'team') {
         const teamsRes = await api.get('/teams');
         setMyTeams(teamsRes.data.teams || []);
       }
-      
+
     } catch (err) {
       setError(err.message || 'Failed to load tournament details');
     } finally {
@@ -69,16 +68,16 @@ export default function TournamentDetailsPage() {
       setRegError('Please select a team to register');
       return;
     }
-    
+
     setRegLoading(true);
     setRegError('');
-    
+
     try {
       const payload = {};
       if (tournament.participation_type === 'team') {
         payload.team_id = selectedTeamId;
       }
-      
+
       await api.post(`/tournaments/${tournamentId}/registrations`, payload);
       // Reload data to reflect new registration or waitlist state
       await loadData();
@@ -88,7 +87,7 @@ export default function TournamentDetailsPage() {
       setRegLoading(false);
     }
   };
-  
+
   const handleCancelRegistration = async () => {
     if (!window.confirm('Are you sure you want to cancel your registration?')) return;
     setRegLoading(true);
@@ -107,7 +106,7 @@ export default function TournamentDetailsPage() {
   if (!tournament) return null;
 
   const isOpen = tournament.status === 'registration_open';
-  
+
 
   return (
     <div className="max-w-4xl mx-auto space-y-6">
@@ -116,14 +115,22 @@ export default function TournamentDetailsPage() {
       </Link>
 
       <div className="bg-white shadow sm:rounded-lg overflow-hidden">
-        <div className="px-4 py-5 sm:px-6 flex justify-between items-start">
+        <div className="px-4 py-5 sm:px-6 flex flex-col sm:flex-row sm:justify-between sm:items-start gap-4">
           <div>
             <h3 className="text-2xl font-semibold leading-6 text-gray-900">{tournament.name}</h3>
             <p className="mt-1 max-w-2xl text-sm text-gray-500">{tournament.sport_name} • {tournament.format.replace(/_/g, ' ')}</p>
           </div>
-          <TournamentStatusBadge status={tournament.status} />
+          <div className="flex flex-col sm:items-end gap-2">
+            <TournamentStatusBadge status={tournament.status} />
+            <Link
+              to={`/tournaments/${tournament.id}/matches`}
+              className="inline-flex items-center rounded-md bg-white px-3 py-2 text-sm font-semibold text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 hover:bg-gray-50"
+            >
+              View Matches
+            </Link>
+          </div>
         </div>
-        
+
         <div className="border-t border-gray-200 px-4 py-5 sm:p-0">
           <dl className="sm:divide-y sm:divide-gray-200">
             <div className="py-4 sm:grid sm:grid-cols-3 sm:gap-4 sm:py-5 sm:px-6">
@@ -169,7 +176,7 @@ export default function TournamentDetailsPage() {
       {/* Registration Section */}
       <div className="bg-white shadow sm:rounded-lg p-6">
         <h4 className="text-lg font-medium text-gray-900 mb-4">Registration</h4>
-        
+
         <ErrorMessage message={regError} className="mb-4" />
 
         {myRegistration ? (

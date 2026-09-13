@@ -14,6 +14,14 @@ class SportsController {
     });
   }
 
+  async getSportStatDefinitions(req, res) {
+    const statDefinitions = await sportsService.getSportStatDefinitions(req.params.sportId);
+    res.json({
+      success: true,
+      data: { statDefinitions }
+    });
+  }
+
   // ==========================================
   // PLAYER SPORT PROFILES (AUTHENTICATED)
   // ==========================================

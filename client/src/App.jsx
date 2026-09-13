@@ -22,6 +22,8 @@ import CasualGameForm from './pages/CasualGameForm';
 
 import TournamentsPage from './pages/tournaments/TournamentsPage';
 import TournamentDetailsPage from './pages/tournaments/TournamentDetailsPage';
+import TournamentMatchesPage from './pages/tournaments/TournamentMatchesPage';
+import MatchDetailsPage from './pages/tournaments/MatchDetailsPage';
 import MyRegistrationsPage from './pages/tournaments/MyRegistrationsPage';
 import OrganizerTournamentsPage from './pages/tournaments/organizer/OrganizerTournamentsPage';
 import TournamentFormPage from './pages/tournaments/organizer/TournamentFormPage';
@@ -64,6 +66,8 @@ export default function App() {
           {/* Tournament Routes */}
           <Route path="/tournaments" element={<TournamentsPage />} />
           <Route path="/tournaments/:tournamentId" element={<TournamentDetailsPage />} />
+          <Route path="/tournaments/:tournamentId/matches" element={<TournamentMatchesPage />} />
+          <Route path="/tournaments/:tournamentId/matches/:matchId" element={<MatchDetailsPage />} />
           <Route path="/my-registrations" element={<MyRegistrationsPage />} />
 
           <Route path="/organizer/tournaments" element={

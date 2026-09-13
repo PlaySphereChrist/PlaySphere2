@@ -16,6 +16,20 @@ class SportsService {
   }
 
   /**
+   * Get stat definitions for a specific sport.
+   */
+  async getSportStatDefinitions(sportId) {
+    const { rows } = await db.query(
+      `SELECT id, sport_id, stat_key, stat_name, description, data_type, is_cumulative, applies_to, created_at
+       FROM sport_stat_definitions
+       WHERE sport_id = $1
+       ORDER BY stat_name ASC`,
+      [sportId]
+    );
+    return rows;
+  }
+
+  /**
    * Internal helper to find a user's player profile ID safely.
    */
   async _getPlayerProfileId(userId) {
