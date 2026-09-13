@@ -65,8 +65,8 @@ export default function MatchDetailsPage() {
         try {
           const statsRes = await api.get(`/sports/${t.sport_id}/stat-definitions`);
           setStatDefs(statsRes.data.statDefinitions || []);
-        } catch {
-          console.error("Could not fetch stat definitions", e);
+        } catch (err) {
+          console.error("Could not fetch stat definitions", err);
         }
       }
     } catch (err) {
@@ -124,7 +124,7 @@ export default function MatchDetailsPage() {
       const payloadParticipants = Object.entries(completeData).map(([regId, data]) => ({
         registration_id: regId,
         result: data.result || undefined,
-        score_numeric: data.score_numeric !== '' ? Number(data.score_numeric) : undefined
+        score: data.score_numeric !== '' ? { numeric: Number(data.score_numeric) } : undefined
       }));
       const winner = payloadParticipants.find(p => p.result === 'win');
       
@@ -133,7 +133,7 @@ export default function MatchDetailsPage() {
         winner_registration_id: winner ? winner.registration_id : undefined
       };
       
-      await api.post(/matches//complete, payload);
+      await api.post(`/matches/$matchId/complete`, payload);
       setIsCompleting(false);
       await loadData();
     } catch (err) {
@@ -438,8 +438,3 @@ export default function MatchDetailsPage() {
     </div>
   );
 }
-
-
-
-
-

@@ -59,11 +59,11 @@ class TournamentsService {
       // Organizer sees their own + registration_open
       params.push(requestingUser.id);
       whereConditions.push(
-        `(t.organizer_user_id = $${params.length} OR t.status = 'registration_open')`
+        `(t.organizer_user_id = $${params.length} OR t.status IN ('registration_open', 'registration_closed', 'in_progress', 'completed'))`
       );
     } else {
       // Regular users only see registration_open
-      whereConditions.push(`t.status = 'registration_open'`);
+      whereConditions.push(`t.status IN ('registration_open', 'registration_closed', 'in_progress', 'completed')`);
     }
 
     if (filters.sport_id) {
@@ -123,7 +123,7 @@ class TournamentsService {
     const isAdmin = requestingUser?.roles?.includes('ADMIN');
     const isOwnOrganizer = requestingUser?.id === tournament.organizer_user_id;
 
-    if (!isAdmin && !isOwnOrganizer && tournament.status !== 'registration_open') {
+    if (!isAdmin && !isOwnOrganizer && tournament.status !== 'registration_open' && tournament.status !== 'registration_closed' && tournament.status !== 'in_progress' && tournament.status !== 'completed') {
       throw this._notFound('Tournament not found');
     }
 
