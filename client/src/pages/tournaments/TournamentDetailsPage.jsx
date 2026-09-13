@@ -1,13 +1,15 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { api } from '../../lib/api';
+import { useAuth } from '../../store/AuthContext';
 import Spinner from '../../components/Spinner';
 import ErrorMessage from '../../components/ErrorMessage';
 import TournamentStatusBadge from '../../components/TournamentStatusBadge';
+import LeaderboardPanel from './LeaderboardPanel';
 
 export default function TournamentDetailsPage() {
   const { tournamentId } = useParams();
-
+  const { user } = useAuth();
 
   const [tournament, setTournament] = useState(null);
   const [myRegistration, setMyRegistration] = useState(null);
@@ -106,7 +108,9 @@ export default function TournamentDetailsPage() {
   if (!tournament) return null;
 
   const isOpen = tournament.status === 'registration_open';
-
+  const isOrganizerOrAdmin =
+    user?.roles?.includes('ADMIN') ||
+    (user?.roles?.includes('ORGANIZER') && tournament.organizer_user_id === user.id);
 
   return (
     <div className="max-w-4xl mx-auto space-y-6">
@@ -251,6 +255,13 @@ export default function TournamentDetailsPage() {
           </div>
         )}
       </div>
+
+      {/* Leaderboards Section */}
+      <LeaderboardPanel
+        tournamentId={tournamentId}
+        tournament={tournament}
+        isOrganizerOrAdmin={isOrganizerOrAdmin}
+      />
     </div>
   );
 }
