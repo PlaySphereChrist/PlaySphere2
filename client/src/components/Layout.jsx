@@ -33,6 +33,7 @@ export default function Layout() {
   const navLinks = [
     { to: '/tournaments', label: 'Tournaments', startsWith: '/tournaments' },
     { to: '/my-registrations', label: 'My Registrations' },
+    { to: '/community', label: 'Community', startsWith: '/community' },
     { to: '/sports', label: 'Sports' },
     { to: '/casual-games', label: 'Casual Games', startsWith: '/casual-games' },
     { to: '/teams', label: 'Teams', startsWith: '/teams' },

@@ -7,6 +7,7 @@ import SignupPage from './pages/SignupPage';
 import LoginPage from './pages/LoginPage';
 import ProfilePage from './pages/ProfilePage';
 import PlayerProfilePage from './pages/PlayerProfilePage';
+import CommunityPage from './pages/community/CommunityPage';
 import SportsPage from './pages/SportsPage';
 import TeamsPage from './pages/TeamsPage';
 import TeamDetailsPage from './pages/TeamDetailsPage';
@@ -49,6 +50,7 @@ export default function App() {
         <Route element={<Layout />}>
           <Route path="/profile" element={<ProfilePage />} />
           <Route path="/player-profile" element={<PlayerProfilePage />} />
+          <Route path="/community" element={<CommunityPage />} />
           <Route path="/sports" element={<SportsPage />} />
           <Route path="/teams" element={<TeamsPage />} />
           <Route path="/teams/:teamId" element={<TeamDetailsPage />} />
