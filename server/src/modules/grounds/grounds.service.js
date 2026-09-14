@@ -455,7 +455,31 @@ class GroundsService {
       );
 
       await client.query('COMMIT');
-      return bookingRes.rows[0];
+
+      const createdBooking = bookingRes.rows[0];
+
+      // Audit and Notify (outside the transaction)
+      const auditService = require('../audit-logs/audit.service');
+      const notificationService = require('../notifications/notification.service');
+
+      auditService.log({
+        actor_user_id: userId,
+        action: 'ground_booking_created',
+        entity_type: 'ground_booking',
+        entity_id: createdBooking.id,
+        new_state: createdBooking
+      });
+
+      notificationService.notifyUser({
+        userId,
+        type: 'booking_created',
+        title: 'Booking Created (Pending Payment)',
+        body: `Your booking for slot ${slot.slot_date} is pending advance payment.`,
+        entityType: 'ground_booking',
+        entityId: createdBooking.id
+      });
+
+      return createdBooking;
     } catch (err) {
       await client.query('ROLLBACK');
       throw err;
@@ -603,6 +627,42 @@ class GroundsService {
       }
 
       await client.query('COMMIT');
+
+      const auditService = require('../audit-logs/audit.service');
+      const notificationService = require('../notifications/notification.service');
+
+      auditService.log({
+        actor_user_id: userId,
+        action: 'ground_booking_cancelled',
+        entity_type: 'ground_booking',
+        entity_id: bookingId,
+        previous_state: booking,
+        reason: reason
+      });
+
+      // We need ground name for email
+      const gRes = await query(`SELECT name FROM grounds WHERE id = (SELECT ground_id FROM ground_bookings WHERE id = $1)`, [bookingId]);
+      const groundName = gRes.rows[0]?.name || 'Ground';
+
+      notificationService.notifyUser({
+        userId: booking.booked_by_user_id,
+        type: 'booking_cancelled',
+        title: `Booking Cancelled: ${groundName}`,
+        body: `Your booking for ${slotDateStr} at ${booking.start_time} was cancelled.`,
+        entityType: 'ground_booking',
+        entityId: bookingId,
+        emailTemplate: 'ground_booking_cancellation',
+        emailData: {
+          ground_name: groundName,
+          slot_date: slotDateStr,
+          start_time: booking.start_time,
+          end_time: booking.start_time, // Just providing start time is mostly enough for cancellation, but we can fetch end_time if we wanted.
+          status: 'Cancelled',
+          refund_status: advanceRefundable ? 'Pending' : 'Not Eligible',
+          refund_amount: advanceRefundable ? booking.advance_amount : 0,
+          booking_id: bookingId
+        }
+      });
 
       return {
         booking_id: bookingId,

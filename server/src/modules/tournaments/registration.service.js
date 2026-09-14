@@ -76,6 +76,39 @@ class RegistrationService {
       }
 
       await client.query('COMMIT');
+
+      const auditService = require('../audit-logs/audit.service');
+      const notificationService = require('../notifications/notification.service');
+
+      if (result.type === 'registered') {
+        auditService.log({
+          actor_user_id: user.id,
+          action: 'tournament_registration_created',
+          entity_type: 'tournament_registration',
+          entity_id: result.registration.id,
+          new_state: result.registration
+        });
+
+        const isFree = !result.payment_required;
+        const msg = isFree ? 'Registration approved automatically.' : 'Registration pending payment.';
+
+        notificationService.notifyUser({
+          userId: user.id,
+          type: 'tournament_registration',
+          title: `Tournament Registration: ${lockedTournament.name}`,
+          body: msg,
+          entityType: 'tournament_registration',
+          entityId: result.registration.id,
+          emailTemplate: isFree ? 'tournament_registration_confirmation' : null,
+          emailData: {
+            tournament_name: lockedTournament.name,
+            status: result.registration.status,
+            fee: lockedTournament.registration_fee,
+            registration_id: result.registration.id
+          }
+        });
+      }
+
       return result;
     } catch (err) {
       await client.query('ROLLBACK');

@@ -276,6 +276,35 @@ class RazorpayPaymentService {
       }
 
       await client.query('COMMIT');
+
+      // Audit and notify
+      const auditService = require('../audit-logs/audit.service');
+      const notificationService = require('../notifications/notification.service');
+
+      auditService.log({
+        actor_user_id: userId,
+        action: 'payment_verified',
+        entity_type: 'payment',
+        entity_id: payment.id,
+        new_state: { status: 'captured', razorpay_payment_id }
+      });
+
+      notificationService.notifyUser({
+        userId: payment.user_id,
+        type: 'payment_confirmed',
+        title: 'Payment Successful',
+        body: `Payment of ₹${payment.amount} was successful.`,
+        entityType: 'payment',
+        entityId: payment.id,
+        emailTemplate: 'payment_confirmation',
+        emailData: {
+          amount: payment.amount,
+          entity_type: entityType,
+          entity_id: entityId,
+          payment_id: payment.id
+        }
+      });
+
     } catch (err) {
       await client.query('ROLLBACK');
       throw err;
@@ -413,6 +442,32 @@ class RazorpayPaymentService {
       );
 
       await client.query('COMMIT');
+
+      const auditService = require('../audit-logs/audit.service');
+      const notificationService = require('../notifications/notification.service');
+
+      auditService.log({
+        actor_user_id: userId,
+        action: 'refund_processed',
+        entity_type: 'refund',
+        entity_id: refundRecord.id,
+        new_state: { status: 'processed', razorpay_refund_id: rzpRefund.id }
+      });
+
+      notificationService.notifyUser({
+        userId: payment.user_id,
+        type: 'refund_confirmed',
+        title: 'Refund Processed Successfully',
+        body: `Refund of ₹${refundRecord.amount} has been processed.`,
+        entityType: 'refund',
+        entityId: refundRecord.id,
+        emailTemplate: 'refund_confirmation',
+        emailData: {
+          amount: refundRecord.amount,
+          reason: refundRecord.reason,
+          entity_id: payment.entity_id
+        }
+      });
 
       return {
         refunded: true,

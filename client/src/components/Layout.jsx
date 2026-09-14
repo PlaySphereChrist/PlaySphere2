@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../store/AuthContext';
+import NotificationsDropdown from './NotificationsDropdown';
 
 export default function Layout() {
   const { user, logout } = useAuth();
@@ -85,6 +86,7 @@ export default function Layout() {
               >
                 Sign out
               </button>
+              <NotificationsDropdown />
             </div>
 
             {/* Mobile menu button */}

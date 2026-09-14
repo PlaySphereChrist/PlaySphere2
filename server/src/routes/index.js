@@ -46,5 +46,6 @@ router.use('/performance-events', require('../modules/performance/performance.ro
 router.use('/statistics', require('../modules/stats/statistics.routes'));
 router.use('/leaderboards', require('../modules/leaderboards/leaderboards.routes'));
 router.use('/community',   require('../modules/community/community.routes'));
+router.use('/notifications', require('../modules/notifications/notification.routes'));
 
 module.exports = router;
