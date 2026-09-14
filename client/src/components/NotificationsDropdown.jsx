@@ -27,8 +27,8 @@ export default function NotificationsDropdown() {
 
   useEffect(() => {
     fetchUnreadCount();
-    const interval = setInterval(fetchUnreadCount, 60000); // Poll every minute
-    return () => clearInterval(interval);
+    const interval = window.setInterval(fetchUnreadCount, 60000); // Poll every minute
+    return () => window.clearInterval(interval);
   }, []);
 
   useEffect(() => {
