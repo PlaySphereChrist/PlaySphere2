@@ -18,4 +18,11 @@ router.get('/my', asyncHandler(ctrl.getMyRegistration));
 // DELETE /api/tournaments/:tournamentId/registrations/:registrationId
 router.delete('/:registrationId', asyncHandler(ctrl.cancelRegistration));
 
+// POST /api/tournaments/:tournamentId/registrations/:registrationId/payment/order
+const paymentCtrl = require('../payments/razorpay.controller');
+router.post('/:registrationId/payment/order', asyncHandler(paymentCtrl.createOrder.bind(paymentCtrl)));
+
+// POST /api/tournaments/:tournamentId/registrations/:registrationId/payment/verify
+router.post('/:registrationId/payment/verify', asyncHandler(paymentCtrl.verifyPayment.bind(paymentCtrl)));
+
 module.exports = router;

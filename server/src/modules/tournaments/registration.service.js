@@ -114,7 +114,7 @@ class RegistrationService {
       throw this._forbidden('Registration denied: candidate does not satisfy all mandatory eligibility rules');
     }
 
-    // Check capacity and route to registration or waitlist
+    // Check capacity and route to waitlist
     const activeCount = await this._countActiveRegistrations(client, tournament.id);
     const capacity = tournament.max_teams; // max_teams field is used for both types
 
@@ -123,23 +123,41 @@ class RegistrationService {
       return await this._addToWaitlist(client, tournament.id, user.id, null, profileId, eligResult);
     }
 
+    const fee = parseFloat(tournament.registration_fee) || 0;
+    const initialStatus = fee > 0 ? 'pending' : 'approved';
+
     // Create registration
     const regRes = await client.query(
       `INSERT INTO tournament_registrations
          (tournament_id, individual_player_profile_id, registered_by_user_id,
           status, eligibility_status, registration_name, registered_at)
-       VALUES ($1, $2, $3, 'approved', $4, $5, NOW())
+       VALUES ($1, $2, $3, $4, $5, $6, NOW())
        RETURNING *`,
       [
         tournament.id,
         profileId,
         user.id,
+        initialStatus,
         eligResult.override ? 'overridden' : 'approved',
         user.username || null
       ]
     );
 
-    return { type: 'registered', registration: regRes.rows[0] };
+    const registration = regRes.rows[0];
+    let payment = null;
+
+    if (fee > 0) {
+      const payRes = await client.query(
+        `INSERT INTO payments
+           (user_id, entity_type, entity_id, amount, currency, status, payment_type, description)
+         VALUES ($1, 'tournament_registration', $2, $3, 'INR', 'created', 'full', 'Tournament Registration Fee')
+         RETURNING *`,
+        [user.id, registration.id, fee]
+      );
+      payment = payRes.rows[0];
+    }
+
+    return { type: 'registered', registration, payment_required: fee > 0, payment };
   }
 
   async _registerTeam(client, tournament, user, body) {
@@ -187,21 +205,27 @@ class RegistrationService {
       return await this._addToWaitlist(client, tournament.id, user.id, team_id, null, eligResult);
     }
 
+    const fee = parseFloat(tournament.registration_fee) || 0;
+    const initialStatus = fee > 0 ? 'pending' : 'approved';
+
     // Create registration
     const regRes = await client.query(
       `INSERT INTO tournament_registrations
          (tournament_id, team_id, registered_by_user_id,
           status, eligibility_status, registration_name, registered_at)
-       VALUES ($1, $2, $3, 'approved', $4, $5, NOW())
+       VALUES ($1, $2, $3, $4, $5, $6, NOW())
        RETURNING *`,
       [
         tournament.id,
         team_id,
         user.id,
+        initialStatus,
         eligResult.override ? 'overridden' : 'approved',
         team.name
       ]
     );
+
+    const registration = regRes.rows[0];
 
     // Snapshot team roster into tournament_registration_players
     const rosterRes = await client.query(
@@ -214,11 +238,23 @@ class RegistrationService {
       await client.query(
         `INSERT INTO tournament_registration_players (registration_id, player_profile_id)
          VALUES ($1, $2) ON CONFLICT DO NOTHING`,
-        [regRes.rows[0].id, member.player_profile_id]
+        [registration.id, member.player_profile_id]
       );
     }
 
-    return { type: 'registered', registration: regRes.rows[0] };
+    let payment = null;
+    if (fee > 0) {
+      const payRes = await client.query(
+        `INSERT INTO payments
+           (user_id, entity_type, entity_id, amount, currency, status, payment_type, description)
+         VALUES ($1, 'tournament_registration', $2, $3, 'INR', 'created', 'full', 'Tournament Registration Fee')
+         RETURNING *`,
+        [user.id, registration.id, fee]
+      );
+      payment = payRes.rows[0];
+    }
+
+    return { type: 'registered', registration, payment_required: fee > 0, payment };
   }
 
   // Run Phase 9C evaluation query using the internal eligibility engine

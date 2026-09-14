@@ -40,29 +40,49 @@ class RazorpayPaymentService {
   _forbidden(msg) { const e = new Error(msg); e.statusCode = 403; return e; }
 
   /**
-   * Load the advance payment record for a ground booking, enforcing ownership.
+   * Load the payment record for an entity, enforcing ownership.
    */
-  async _loadPaymentForBooking(bookingId, userId, isAdmin = false) {
-    const { rows } = await query(
-      `SELECT p.id, p.amount, p.currency, p.status, p.payment_type,
-              p.razorpay_order_id, p.razorpay_payment_id,
-              gb.booked_by_user_id, gb.status as booking_status
-       FROM payments p
-       JOIN ground_bookings gb ON gb.id = p.entity_id
-       WHERE p.entity_id = $1
-         AND p.entity_type = 'ground_booking'
-         AND p.payment_type = 'advance'
-       ORDER BY p.created_at DESC
-       LIMIT 1`,
-      [bookingId]
-    );
+  async _loadPayment(entityId, entityType, userId, isAdmin = false) {
+    let queryStr = '';
 
-    if (rows.length === 0) throw this._notFound('Payment record not found for this booking');
+    if (entityType === 'ground_booking') {
+      queryStr = `
+        SELECT p.id, p.amount, p.currency, p.status, p.payment_type,
+               p.razorpay_order_id, p.razorpay_payment_id,
+               gb.booked_by_user_id AS owner_user_id, gb.status AS entity_status
+        FROM payments p
+        JOIN ground_bookings gb ON gb.id = p.entity_id
+        WHERE p.entity_id = $1
+          AND p.entity_type = 'ground_booking'
+          AND p.payment_type = 'advance'
+        ORDER BY p.created_at DESC
+        LIMIT 1
+      `;
+    } else if (entityType === 'tournament_registration') {
+      queryStr = `
+        SELECT p.id, p.amount, p.currency, p.status, p.payment_type,
+               p.razorpay_order_id, p.razorpay_payment_id,
+               tr.registered_by_user_id AS owner_user_id, tr.status AS entity_status
+        FROM payments p
+        JOIN tournament_registrations tr ON tr.id = p.entity_id
+        WHERE p.entity_id = $1
+          AND p.entity_type = 'tournament_registration'
+          AND p.payment_type = 'full'
+        ORDER BY p.created_at DESC
+        LIMIT 1
+      `;
+    } else {
+      throw this._badRequest('Invalid entity type');
+    }
+
+    const { rows } = await query(queryStr, [entityId]);
+
+    if (rows.length === 0) throw this._notFound('Payment record not found for this entity');
 
     const payment = rows[0];
 
-    if (!isAdmin && payment.booked_by_user_id !== userId) {
-      throw this._notFound('Booking not found');
+    if (!isAdmin && payment.owner_user_id !== userId) {
+      throw this._notFound('Entity not found');
     }
 
     return payment;
@@ -74,23 +94,24 @@ class RazorpayPaymentService {
 
   /**
    * POST /api/ground-bookings/:bookingId/payment/order
+   * POST /api/tournaments/:tournamentId/registrations/:registrationId/payment/order
    *
-   * Creates a Razorpay Order for the advance payment of a ground booking.
+   * Creates a Razorpay Order for the payment.
    * Amount comes exclusively from the server-side payment record.
    * Client cannot supply or override the amount.
    */
-  async createOrder(bookingId, userId) {
+  async createOrder(entityId, entityType, userId, isAdmin = false) {
     const rzp = getRazorpay();
 
-    const payment = await this._loadPaymentForBooking(bookingId, userId);
+    const payment = await this._loadPayment(entityId, entityType, userId, isAdmin);
 
     // Only allow creating a new order for non-terminal payment statuses
     const terminalStatuses = ['captured', 'refunded', 'partially_refunded'];
     if (terminalStatuses.includes(payment.status)) {
-      throw this._conflict('This booking has already been paid');
+      throw this._conflict('This entity has already been paid');
     }
-    if (payment.booking_status === 'cancelled') {
-      throw this._badRequest('Cannot initiate payment for a cancelled booking');
+    if (payment.entity_status === 'cancelled' || payment.entity_status === 'withdrawn' || payment.entity_status === 'rejected') {
+      throw this._badRequest('Cannot initiate payment for a cancelled or rejected entity');
     }
 
     // If an order already exists and payment is still pending/created,
@@ -116,9 +137,10 @@ class RazorpayPaymentService {
       order = await rzp.orders.create({
         amount: amountPaise,
         currency: payment.currency || 'INR',
-        receipt: `booking_${bookingId.slice(0, 16)}`,
+        receipt: `receipt_${entityId.slice(0, 16)}`,
         notes: {
-          booking_id: bookingId,
+          entity_id: entityId,
+          entity_type: entityType,
           payment_id: payment.id,
         },
       });
@@ -153,16 +175,17 @@ class RazorpayPaymentService {
 
   /**
    * POST /api/ground-bookings/:bookingId/payment/verify
+   * POST /api/tournaments/:tournamentId/registrations/:registrationId/payment/verify
    *
    * Verifies a Razorpay Checkout response. All values must come from the
    * Checkout handler; any mismatch or invalid signature rejects the request.
    */
-  async verifyPayment(bookingId, userId, { razorpay_order_id, razorpay_payment_id, razorpay_signature }) {
+  async verifyPayment(entityId, entityType, userId, { razorpay_order_id, razorpay_payment_id, razorpay_signature }) {
     if (!razorpay_order_id || !razorpay_payment_id || !razorpay_signature) {
       throw this._badRequest('razorpay_order_id, razorpay_payment_id, and razorpay_signature are required');
     }
 
-    const payment = await this._loadPaymentForBooking(bookingId, userId);
+    const payment = await this._loadPayment(entityId, entityType, userId);
 
     if (!env.RAZORPAY_KEY_SECRET) {
       const err = new Error('Razorpay secret not configured');
@@ -176,16 +199,16 @@ class RazorpayPaymentService {
     }
 
     if (['captured', 'refunded', 'partially_refunded'].includes(payment.status)) {
-      throw this._conflict('This booking payment has already been processed');
+      throw this._conflict('This payment has already been processed');
     }
 
-    if (payment.booking_status === 'cancelled') {
-      throw this._badRequest('Cannot verify payment for a cancelled booking');
+    if (payment.entity_status === 'cancelled' || payment.entity_status === 'withdrawn') {
+      throw this._badRequest('Cannot verify payment for a cancelled entity');
     }
 
     // Ensure the submitted order ID matches what we stored server-side
     if (!payment.razorpay_order_id) {
-      throw this._badRequest('No Razorpay order exists for this booking. Create an order first.');
+      throw this._badRequest('No Razorpay order exists for this entity. Create an order first.');
     }
     if (payment.razorpay_order_id !== razorpay_order_id) {
       const err = new Error('Order ID mismatch — payment verification rejected');
@@ -235,13 +258,22 @@ class RazorpayPaymentService {
         [razorpay_payment_id, razorpay_signature, payment.id]
       );
 
-      // Mark booking as confirmed and record advance_paid_at
-      await client.query(
-        `UPDATE ground_bookings
-         SET status = 'confirmed', advance_paid_at = NOW()
-         WHERE id = $1 AND status IN ('pending', 'confirmed')`,
-        [bookingId]
-      );
+      // Update appropriate entity
+      if (entityType === 'ground_booking') {
+        await client.query(
+          `UPDATE ground_bookings
+           SET status = 'confirmed', advance_paid_at = NOW()
+           WHERE id = $1 AND status IN ('pending', 'confirmed')`,
+          [entityId]
+        );
+      } else if (entityType === 'tournament_registration') {
+        await client.query(
+          `UPDATE tournament_registrations
+           SET status = 'approved'
+           WHERE id = $1 AND status = 'pending'`,
+          [entityId]
+        );
+      }
 
       await client.query('COMMIT');
     } catch (err) {
@@ -433,16 +465,17 @@ class RazorpayPaymentService {
     const eventName = event;
 
     if (eventName === 'payment.captured' || eventName === 'order.paid') {
-      const paymentEntity = payload?.payment?.entity || payload?.order?.entity;
+      const dataPayload = payload?.payload || {};
+      const paymentEntity = dataPayload?.payment?.entity || dataPayload?.order?.entity;
       if (!paymentEntity) return;
 
-      const rzpPaymentId = paymentEntity.id || payload?.payment?.entity?.id;
-      const rzpOrderId = paymentEntity.order_id || payload?.order?.entity?.id;
+      const rzpPaymentId = paymentEntity.id;
+      const rzpOrderId = paymentEntity.order_id;
       if (!rzpOrderId) return;
 
       // Find our payment record by razorpay_order_id
       const { rows } = await query(
-        `SELECT id, entity_id, status FROM payments WHERE razorpay_order_id = $1`,
+        `SELECT id, entity_id, entity_type, status FROM payments WHERE razorpay_order_id = $1`,
         [rzpOrderId]
       );
 
@@ -466,14 +499,23 @@ class RazorpayPaymentService {
           [rzpPaymentId, payment.id]
         );
 
-        // Confirm the booking
-        await client.query(
-          `UPDATE ground_bookings
-           SET status = 'confirmed',
-               advance_paid_at = COALESCE(advance_paid_at, NOW())
-           WHERE id = $1 AND status IN ('pending')`,
-          [payment.entity_id]
-        );
+        if (payment.entity_type === 'ground_booking') {
+          // Confirm the booking
+          await client.query(
+            `UPDATE ground_bookings
+             SET status = 'confirmed',
+                 advance_paid_at = COALESCE(advance_paid_at, NOW())
+             WHERE id = $1 AND status IN ('pending')`,
+            [payment.entity_id]
+          );
+        } else if (payment.entity_type === 'tournament_registration') {
+          await client.query(
+            `UPDATE tournament_registrations
+             SET status = 'approved'
+             WHERE id = $1 AND status = 'pending'`,
+            [payment.entity_id]
+          );
+        }
 
         await client.query('COMMIT');
       } catch (err) {
@@ -484,7 +526,8 @@ class RazorpayPaymentService {
       }
 
     } else if (eventName === 'payment.failed') {
-      const paymentEntity = payload?.payment?.entity;
+      const dataPayload = payload?.payload || {};
+      const paymentEntity = dataPayload?.payment?.entity;
       if (!paymentEntity?.order_id) return;
 
       const { rows } = await query(

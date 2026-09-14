@@ -80,9 +80,62 @@ export default function TournamentDetailsPage() {
         payload.team_id = selectedTeamId;
       }
 
-      await api.post(`/tournaments/${tournamentId}/registrations`, payload);
-      // Reload data to reflect new registration or waitlist state
-      await loadData();
+      const res = await api.post(`/tournaments/${tournamentId}/registrations`, payload);
+
+      // If payment is required
+      if (res.payment_required) {
+        const orderRes = await api.post(`/tournaments/${tournamentId}/registrations/${res.registration.id}/payment/order`, {});
+        const orderData = orderRes.data;
+
+        // Open Razorpay Checkout
+        if (!window.Razorpay) {
+          const script = document.createElement('script');
+          script.src = 'https://checkout.razorpay.com/v1/checkout.js';
+          document.body.appendChild(script);
+          await new Promise((resolve) => script.onload = resolve);
+        }
+
+        const options = {
+          key: orderData.key_id,
+          amount: orderData.amount,
+          currency: orderData.currency,
+          order_id: orderData.order_id,
+          name: 'PlaySphere',
+          description: `Tournament Registration Fee`,
+          prefill: {
+            email: user?.email || '',
+          },
+          theme: { color: '#4F46E5' },
+          handler: async function (response) {
+            try {
+              await api.post(`/tournaments/${tournamentId}/registrations/${res.registration.id}/payment/verify`, {
+                razorpay_order_id: response.razorpay_order_id,
+                razorpay_payment_id: response.razorpay_payment_id,
+                razorpay_signature: response.razorpay_signature,
+              });
+              await loadData();
+            } catch (err) {
+              setRegError(err.message || 'Payment verification failed. Contact support.');
+              await loadData();
+            }
+          },
+          modal: {
+            ondismiss: async function () {
+              setRegError('Payment cancelled. Your registration is incomplete.');
+              await loadData();
+            },
+          },
+        };
+
+        const rzp = new window.Razorpay(options);
+        rzp.on('payment.failed', function (response) {
+          setRegError(`Payment failed: ${response.error?.description || 'Unknown error'}`);
+          loadData();
+        });
+        rzp.open();
+      } else {
+        await loadData();
+      }
     } catch (err) {
       setRegError(err.data?.error || err.message || 'Registration failed');
     } finally {
@@ -165,6 +218,12 @@ export default function TournamentDetailsPage() {
               <dt className="text-sm font-medium text-gray-500">Registration Window</dt>
               <dd className="mt-1 text-sm text-gray-900 sm:col-span-2 sm:mt-0">
                 {new Date(tournament.registration_opens_at).toLocaleDateString()} to {new Date(tournament.registration_closes_at).toLocaleDateString()}
+              </dd>
+            </div>
+            <div className="py-4 sm:grid sm:grid-cols-3 sm:gap-4 sm:py-5 sm:px-6">
+              <dt className="text-sm font-medium text-gray-500">Registration Fee</dt>
+              <dd className="mt-1 text-sm text-gray-900 sm:col-span-2 sm:mt-0">
+                {tournament.registration_fee > 0 ? `₹${tournament.registration_fee}` : 'Free'}
               </dd>
             </div>
             <div className="py-4 sm:grid sm:grid-cols-3 sm:gap-4 sm:py-5 sm:px-6">

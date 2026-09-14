@@ -36,14 +36,21 @@ export default function CommunityPage() {
 
   const checkMembership = async () => {
     try {
-      // Simplest way to check membership without a specific "me" endpoint is to search the first few pages
-      // Or just rely on a failing post creation to catch it, but we need UI state.
-      // Let's fetch the list with a large limit.
-      const res = await api.request('GET', '/community/members?limit=1000');
-      if (res.success) {
-        const found = res.members.some(m => m.user_id === user.id);
-        setIsMember(found);
+      // The server caps limit at 100. Paginate if total > 100.
+      let page = 1;
+      let found = false;
+      let keepGoing = true;
+      while (keepGoing) {
+        const res = await api.request('GET', `/community/members?limit=100&page=${page}`);
+        if (!res.success) break;
+        found = res.members.some(m => m.user_id === user.id);
+        if (found || res.members.length < 100 || (page * 100) >= res.total) {
+          keepGoing = false;
+        } else {
+          page++;
+        }
       }
+      setIsMember(found);
     } catch (err) {
       console.error('Failed to check membership', err);
     }

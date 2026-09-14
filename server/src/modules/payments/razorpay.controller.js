@@ -3,11 +3,12 @@ const razorpayService = require('./razorpay.service');
 class RazorpayController {
 
   async createOrder(req, res) {
-    const { bookingId } = req.params;
+    const entityId = req.params.bookingId || req.params.registrationId;
+    const entityType = req.params.bookingId ? 'ground_booking' : 'tournament_registration';
     const userId = req.user.id;
     const isAdmin = req.user.roles && req.user.roles.includes('ADMIN');
 
-    const result = await razorpayService.createOrder(bookingId, userId, isAdmin);
+    const result = await razorpayService.createOrder(entityId, entityType, userId, isAdmin);
     res.json({
       success: true,
       data: result,
@@ -15,12 +16,14 @@ class RazorpayController {
   }
 
   async verifyPayment(req, res) {
-    const { bookingId } = req.params;
+    const entityId = req.params.bookingId || req.params.registrationId;
+    const entityType = req.params.bookingId ? 'ground_booking' : 'tournament_registration';
     const userId = req.user.id;
     const { razorpay_order_id, razorpay_payment_id, razorpay_signature } = req.body;
 
     const result = await razorpayService.verifyPayment(
-      bookingId,
+      entityId,
+      entityType,
       userId,
       { razorpay_order_id, razorpay_payment_id, razorpay_signature }
     );
@@ -34,7 +37,10 @@ class RazorpayController {
   }
 
   async processRefund(req, res) {
-    const { bookingId } = req.params;
+    const bookingId = req.params.bookingId;
+    if (!bookingId) {
+      return res.status(400).json({ success: false, message: 'Refunds only supported for ground bookings' });
+    }
     const userId = req.user.id;
     const isAdmin = req.user.roles && req.user.roles.includes('ADMIN');
 
