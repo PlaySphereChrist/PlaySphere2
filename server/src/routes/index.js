@@ -45,5 +45,6 @@ router.use('/matches', require('../modules/matches/matches.routes'));
 router.use('/performance-events', require('../modules/performance/performance.routes'));
 router.use('/statistics', require('../modules/stats/statistics.routes'));
 router.use('/leaderboards', require('../modules/leaderboards/leaderboards.routes'));
+router.use('/community',   require('../modules/community/community.routes'));
 
 module.exports = router;

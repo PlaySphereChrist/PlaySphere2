@@ -1,5 +1,4 @@
 const { query } = require('../../config/database');
-const ApiError = require('../../utils/ApiError');
 const tournamentsService = require('../tournaments/tournaments.service');
 
 class FixturesService {
