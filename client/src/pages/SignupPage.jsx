@@ -12,7 +12,7 @@ export default function SignupPage() {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
-  const { user } = useAuth();
+  const { user, login } = useAuth();
 
   // If already logged in, redirect away from public signup
   if (user) {
@@ -38,8 +38,9 @@ export default function SignupPage() {
     try {
       const res = await api.post('/auth/register', { email, password });
       if (res.success) {
-        // Redirect to login on success
-        navigate('/login', { state: { message: 'Account created successfully! Please log in.' } });
+        // Auto-login after successful registration
+        await login(email, password);
+        navigate('/player-profile', { replace: true });
       }
     } catch (err) {
       setError(err.message || 'Signup failed');

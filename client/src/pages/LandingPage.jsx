@@ -1,7 +1,10 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
+import { useAuth } from '../store/AuthContext';
 
 export default function LandingPage() {
+  const { user } = useAuth();
+
   return (
     <div className="bg-white min-h-screen">
       <div className="relative isolate px-6 pt-14 lg:px-8">
@@ -18,15 +21,26 @@ export default function LandingPage() {
               join casual games, and compete in tournaments—all in one place.
             </p>
             <div className="mt-10 flex items-center justify-center gap-x-6">
-              <Link
-                to="/signup"
-                className="rounded-md bg-indigo-600 px-3.5 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-indigo-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600"
-              >
-                Create Account
-              </Link>
-              <Link to="/login" className="text-sm font-semibold leading-6 text-gray-900">
-                Log in <span aria-hidden="true">→</span>
-              </Link>
+              {user ? (
+                <Link
+                  to="/tournaments"
+                  className="rounded-md bg-indigo-600 px-3.5 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-indigo-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600"
+                >
+                  Go to App
+                </Link>
+              ) : (
+                <>
+                  <Link
+                    to="/signup"
+                    className="rounded-md bg-indigo-600 px-3.5 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-indigo-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600"
+                  >
+                    Create Account
+                  </Link>
+                  <Link to="/login" className="text-sm font-semibold leading-6 text-gray-900">
+                    Log in <span aria-hidden="true">→</span>
+                  </Link>
+                </>
+              )}
             </div>
           </div>
         </div>
