@@ -1,6 +1,8 @@
 import React, { useState } from 'react';
 import { api } from '../../lib/api';
 import CommentSection from './CommentSection';
+import ReportModal from './ReportModal';
+import ModerateModal from './ModerateModal';
 
 export default function PostItem({ post, currentUser, isMember, onUpdate }) {
   const [showComments, setShowComments] = useState(false);
@@ -8,6 +10,8 @@ export default function PostItem({ post, currentUser, isMember, onUpdate }) {
   const [editTitle, setEditTitle] = useState(post.title);
   const [editBody, setEditBody] = useState(post.body);
   const [submitting, setSubmitting] = useState(false);
+  const [showReportModal, setShowReportModal] = useState(false);
+  const [showModerateModal, setShowModerateModal] = useState(false);
 
   const isAuthor = currentUser?.id === post.author_user_id;
   const isAdmin = currentUser?.roles?.includes('ADMIN');
@@ -95,12 +99,20 @@ export default function PostItem({ post, currentUser, isMember, onUpdate }) {
               </div>
             </div>
 
-            {canEdit && (
-              <div className="flex space-x-2 text-sm">
-                <button onClick={() => setEditing(true)} className="text-indigo-600 hover:text-indigo-900">Edit</button>
-                <button onClick={handleArchive} className="text-red-600 hover:text-red-900">Delete</button>
-              </div>
-            )}
+            <div className="flex space-x-2 text-sm">
+              {canEdit && (
+                <>
+                  <button onClick={() => setEditing(true)} className="text-indigo-600 hover:text-indigo-900">Edit</button>
+                  <button onClick={handleArchive} className="text-red-600 hover:text-red-900">Delete</button>
+                </>
+              )}
+              {isAdmin && !post.is_moderated && (
+                <button onClick={() => setShowModerateModal(true)} className="text-red-600 hover:text-red-900 ml-2 border-l border-gray-300 pl-2">Moderate</button>
+              )}
+              {currentUser && !isAuthor && (
+                <button onClick={() => setShowReportModal(true)} className="text-gray-500 hover:text-gray-700 ml-2 border-l border-gray-300 pl-2">Report</button>
+              )}
+            </div>
           </div>
 
           <div className="mt-3 text-gray-800 whitespace-pre-wrap">{post.body}</div>
@@ -116,6 +128,28 @@ export default function PostItem({ post, currentUser, isMember, onUpdate }) {
 
           {showComments && (
             <CommentSection postId={post.id} currentUser={currentUser} isMember={isMember} />
+          )}
+
+          {showReportModal && (
+            <ReportModal
+              postId={post.id}
+              onClose={() => setShowReportModal(false)}
+              onSuccess={() => {
+                setShowReportModal(false);
+                window.alert('Report submitted successfully.');
+              }}
+            />
+          )}
+
+          {showModerateModal && (
+            <ModerateModal
+              postId={post.id}
+              onClose={() => setShowModerateModal(false)}
+              onSuccess={() => {
+                setShowModerateModal(false);
+                onUpdate();
+              }}
+            />
           )}
         </>
       )}

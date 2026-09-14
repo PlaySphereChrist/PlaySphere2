@@ -49,6 +49,7 @@ export default function Layout() {
 
   if (isAdmin) {
     navLinks.push({ to: '/admin/grounds', label: 'Admin Grounds', startsWith: '/admin/grounds' });
+    navLinks.push({ to: '/admin/reports', label: 'Report Queue', startsWith: '/admin/reports' });
   }
 
   return (

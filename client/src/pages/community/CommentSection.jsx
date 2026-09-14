@@ -2,6 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { api } from '../../lib/api';
 import ErrorMessage from '../../components/ErrorMessage';
 import Spinner from '../../components/Spinner';
+import ReportModal from './ReportModal';
+import ModerateModal from './ModerateModal';
 
 export default function CommentSection({ postId, currentUser, isMember }) {
   const [comments, setComments] = useState([]);
@@ -11,6 +13,8 @@ export default function CommentSection({ postId, currentUser, isMember }) {
   const [submitting, setSubmitting] = useState(false);
   const [editingId, setEditingId] = useState(null);
   const [editBody, setEditBody] = useState('');
+  const [reportCommentId, setReportCommentId] = useState(null);
+  const [moderateCommentId, setModerateCommentId] = useState(null);
 
   const fetchComments = async () => {
     try {
@@ -124,10 +128,20 @@ export default function CommentSection({ postId, currentUser, isMember }) {
                 <div className="text-gray-700 whitespace-pre-wrap">{c.body}</div>
               )}
 
-              {canEdit && !c.is_moderated && editingId !== c.id && (
+              {!c.is_moderated && editingId !== c.id && (
                 <div className="mt-2 flex space-x-3 text-xs">
-                  <button onClick={() => startEdit(c)} className="text-indigo-600 hover:text-indigo-900">Edit</button>
-                  <button onClick={() => handleArchive(c.id)} className="text-red-600 hover:text-red-900">Delete</button>
+                  {canEdit && (
+                    <>
+                      <button onClick={() => startEdit(c)} className="text-indigo-600 hover:text-indigo-900">Edit</button>
+                      <button onClick={() => handleArchive(c.id)} className="text-red-600 hover:text-red-900">Delete</button>
+                    </>
+                  )}
+                  {isAdmin && (
+                    <button onClick={() => setModerateCommentId(c.id)} className="text-red-600 hover:text-red-900">Moderate</button>
+                  )}
+                  {currentUser && !isAuthor && (
+                    <button onClick={() => setReportCommentId(c.id)} className="text-gray-500 hover:text-gray-700">Report</button>
+                  )}
                 </div>
               )}
             </div>
@@ -155,6 +169,28 @@ export default function CommentSection({ postId, currentUser, isMember }) {
         </form>
       ) : (
         <div className="text-sm text-gray-500 italic mt-4">You must join the community to comment.</div>
+      )}
+
+      {reportCommentId && (
+        <ReportModal
+          commentId={reportCommentId}
+          onClose={() => setReportCommentId(null)}
+          onSuccess={() => {
+            setReportCommentId(null);
+            window.alert('Report submitted successfully.');
+          }}
+        />
+      )}
+
+      {moderateCommentId && (
+        <ModerateModal
+          commentId={moderateCommentId}
+          onClose={() => setModerateCommentId(null)}
+          onSuccess={() => {
+            setModerateCommentId(null);
+            fetchComments();
+          }}
+        />
       )}
     </div>
   );

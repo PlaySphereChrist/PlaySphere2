@@ -29,6 +29,7 @@ import MyRegistrationsPage from './pages/tournaments/MyRegistrationsPage';
 import OrganizerTournamentsPage from './pages/tournaments/organizer/OrganizerTournamentsPage';
 import TournamentFormPage from './pages/tournaments/organizer/TournamentFormPage';
 import TournamentManagePage from './pages/tournaments/organizer/TournamentManagePage';
+import AdminReportsPage from './pages/community/AdminReportsPage';
 
 export default function App() {
   const { user, loading } = useAuth();
@@ -64,6 +65,9 @@ export default function App() {
           <Route path="/casual-games/:gameId/edit" element={<CasualGameForm />} />
           <Route path="/admin/grounds" element={<AdminGroundsPage />} />
           <Route path="/admin/grounds/:groundId" element={<AdminGroundDetailsPage />} />
+          <Route path="/admin/reports" element={
+            user?.roles?.includes('ADMIN') ? <AdminReportsPage /> : <Navigate to="/community" replace />
+          } />
 
           {/* Tournament Routes */}
           <Route path="/tournaments" element={<TournamentsPage />} />
