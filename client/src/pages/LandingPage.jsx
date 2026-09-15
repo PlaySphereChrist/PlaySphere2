@@ -1,6 +1,7 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../store/AuthContext';
+import { useTheme } from '../store/ThemeContext';
 import {
   Trophy, Users, MapPin, Swords, Moon, Sun, ChevronDown
 } from 'lucide-react';
@@ -255,7 +256,7 @@ const FEATURES = [
 export default function LandingPage() {
   const { user } = useAuth();
   const navigate = useNavigate();
-  const [darkMode, setDarkMode] = useState(false);
+  const { dark: darkMode, toggle: toggleDark } = useTheme();
 
   // Any protected nav item: signed-in users go straight there, signed-out
   // users are sent to /login with a message and the page they were after.
@@ -268,32 +269,8 @@ export default function LandingPage() {
   }
 
   return (
-    <div className={darkMode ? 'dark' : ''} style={{ minHeight: '100vh' }}>
+    <div style={{ minHeight: '100vh' }}>
       <style>{`
-        @import url('https://fonts.googleapis.com/css2?family=Fraunces:wght@500;600;700&family=Inter:wght@400;500;600&display=swap');
-
-        :root {
-          --bg: #FAF7F2;
-          --surface: #FFFFFF;
-          --text-primary: #241412;
-          --text-secondary: #6B5B54;
-          --border: #E4DDD3;
-          --accent-maroon: #6E1423;
-          --accent-gold: #A87C3F;
-          --pill-hover: #F1E9DE;
-        }
-        .dark {
-          --bg: #15100D;
-          --surface: #1D1613;
-          --text-primary: #F3EDE6;
-          --text-secondary: #B8AA9E;
-          --border: #3A2E27;
-          --accent-maroon: #D8546A;
-          --accent-gold: #C79A54;
-          --pill-hover: #2A211C;
-        }
-        .ps-landing, .ps-landing * { font-family: 'Inter', sans-serif; }
-
         @keyframes ps-marquee {
           from { transform: translateX(0); }
           to { transform: translateX(-50%); }
@@ -301,8 +278,8 @@ export default function LandingPage() {
         .ps-marquee { animation: ps-marquee 18s linear infinite; }
       `}</style>
 
-      <div className="ps-landing" style={{ background: 'var(--bg)', minHeight: '100vh' }}>
-        <Navbar darkMode={darkMode} setDarkMode={setDarkMode} user={user} onProtectedNav={onProtectedNav} />
+      <div className="ps-landing bg-background" style={{ minHeight: '100vh' }}>
+        <Navbar darkMode={darkMode} setDarkMode={toggleDark} user={user} onProtectedNav={onProtectedNav} />
 
         <div className="relative isolate px-6 pt-14 lg:px-8 overflow-hidden">
           <svg className="absolute -top-24 left-1/2 -translate-x-1/2 -z-10 opacity-[0.15]" width="760" height="760" viewBox="0 0 760 760">

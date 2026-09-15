@@ -1,147 +1,232 @@
-import React, { useState } from 'react';
-import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom';
+import { useState } from 'react';
+import { NavLink, Outlet, useLocation, useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../store/AuthContext';
+import { useTheme } from '../store/ThemeContext';
 import NotificationsDropdown from './NotificationsDropdown';
+import {
+  Sun, Moon, Menu, X, ChevronDown, LogOut, User,
+  Trophy, Users, MapPin, Zap, Calendar, Shield
+} from 'lucide-react';
+
+/* ── Shared logo mark ─────────────────────────────────────── */
+function LogoMark({ size = 22 }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 36 36" fill="none">
+      <circle cx="18" cy="18" r="17" stroke="var(--accent-maroon)" strokeWidth="1.5"/>
+      <ellipse cx="18" cy="18" rx="17" ry="7" stroke="var(--accent-gold)" strokeWidth="1"/>
+      <ellipse cx="18" cy="18" rx="7" ry="17" stroke="var(--accent-gold)" strokeWidth="1"/>
+    </svg>
+  );
+}
 
 export default function Layout() {
   const { user, logout } = useAuth();
+  const { dark, toggle } = useTheme();
   const location = useLocation();
   const navigate = useNavigate();
-  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [mobileOpen, setMobileOpen] = useState(false);
+  const [userMenuOpen, setUserMenuOpen] = useState(false);
+
+  const isOrganizer = user?.roles?.includes('ORGANIZER') || user?.roles?.includes('ADMIN');
+  const isAdmin = user?.roles?.includes('ADMIN');
 
   const handleLogout = async () => {
     await logout();
     navigate('/');
   };
 
-  const isOrganizerOrAdmin = user?.roles?.includes('ORGANIZER') || user?.roles?.includes('ADMIN');
-  const isAdmin = user?.roles?.includes('ADMIN');
-
-  const navItemClass = (isActive, startsWith = '') =>
-    `inline-flex items-center border-b-2 px-1 pt-1 text-sm font-medium ${
-      isActive || (startsWith && location.pathname.startsWith(startsWith))
-        ? 'border-indigo-500 text-gray-900'
-        : 'border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700'
-    }`;
-
-  const mobileNavItemClass = (isActive, startsWith = '') =>
-    `block px-3 py-2 rounded-md text-base font-medium ${
-      isActive || (startsWith && location.pathname.startsWith(startsWith))
-        ? 'bg-indigo-50 text-indigo-700'
-        : 'text-gray-700 hover:bg-gray-50'
-    }`;
+  const isActive = (path, startsWith = '') =>
+    location.pathname === path || (startsWith && location.pathname.startsWith(startsWith));
 
   const navLinks = [
-    { to: '/tournaments', label: 'Tournaments', startsWith: '/tournaments' },
-    { to: '/my-registrations', label: 'My Registrations' },
-    { to: '/community', label: 'Community', startsWith: '/community' },
-    { to: '/sports', label: 'Sports' },
-    { to: '/casual-games', label: 'Casual Games', startsWith: '/casual-games' },
-    { to: '/teams', label: 'Teams', startsWith: '/teams' },
-    { to: '/grounds', label: 'Grounds', startsWith: '/grounds', exactCheck: (path) => path.startsWith('/grounds') && !path.startsWith('/admin') },
-    { to: '/bookings', label: 'My Bookings', startsWith: '/bookings' },
-    { to: '/player-profile', label: 'Player Profile' },
-    { to: '/profile', label: 'Account' },
+    { to: '/tournaments', label: 'Tournaments', icon: Trophy, startsWith: '/tournaments' },
+    { to: '/teams',       label: 'Teams',       icon: Users,  startsWith: '/teams' },
+    { to: '/grounds',     label: 'Grounds',     icon: MapPin, startsWith: '/grounds' },
+    { to: '/casual-games',label: 'Casual Games',icon: Zap,    startsWith: '/casual-games' },
+    { to: '/community',   label: 'Community',   icon: Calendar,startsWith: '/community' },
   ];
 
-  if (isOrganizerOrAdmin) {
-    navLinks.push({ to: '/organizer/tournaments', label: 'Manage Tournaments', startsWith: '/organizer/tournaments' });
+  if (isOrganizer) {
+    navLinks.push({ to: '/organizer/tournaments', label: 'Organizer', icon: Shield, startsWith: '/organizer' });
   }
 
-  if (isAdmin) {
-    navLinks.push({ to: '/admin/grounds', label: 'Admin Grounds', startsWith: '/admin/grounds' });
-    navLinks.push({ to: '/admin/reports', label: 'Report Queue', startsWith: '/admin/reports' });
-  }
+  const pillBase = 'px-3.5 py-1.5 rounded-full text-sm font-medium whitespace-nowrap transition-colors duration-150';
+  const activePill = `${pillBase} bg-maroon text-white`;
+  const inactivePill = `${pillBase} text-secondary hover:bg-pill-hover`;
 
   return (
-    <div className="min-h-screen bg-gray-100">
-      <nav className="bg-white shadow-sm">
-        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-          <div className="flex h-16 justify-between items-center">
+    <div className="min-h-screen bg-background">
+      {/* ── Navbar ───────────────────────────────────────── */}
+      <header
+        className="sticky top-0 z-40 border-b border-border"
+        style={{ background: 'var(--surface)' }}
+      >
+        <div className="mx-auto max-w-7xl px-5 lg:px-8">
+          <div className="flex items-center h-16 gap-4">
+            {/* Logo */}
+            <button
+              type="button"
+              onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
+              className="inline-flex items-center gap-2 shrink-0"
+            >
+              <LogoMark size={26} />
+              <span className="font-serif font-semibold text-xl text-primary tracking-tight">
+                PlaySphere
+              </span>
+            </button>
 
-            <div className="flex">
-              <div className="flex flex-shrink-0 items-center">
-                <span className="text-xl font-bold text-indigo-600">PlaySphere</span>
-              </div>
+            {/* Desktop nav */}
+            <nav className="hidden lg:flex items-center gap-1 ml-4">
+              {navLinks.map(({ to, label, startsWith }) => (
+                <NavLink
+                  key={to}
+                  to={to}
+                  className={isActive(to, startsWith) ? activePill : inactivePill}
+                >
+                  {label}
+                </NavLink>
+              ))}
+            </nav>
 
-              {/* Desktop Menu */}
-              <div className="hidden sm:-my-px sm:ml-6 sm:flex sm:space-x-8 overflow-x-auto">
-                {navLinks.map(link => (
-                  <NavLink
-                    key={link.to}
-                    to={link.to}
-                    className={({ isActive }) => navItemClass(isActive, link.startsWith)}
-                  >
-                    {link.label}
-                  </NavLink>
-                ))}
-              </div>
-            </div>
-
-            <div className="hidden sm:flex items-center">
-              <span className="text-sm text-gray-700 mr-4">{user?.email}</span>
+            {/* Right side */}
+            <div className="ml-auto flex items-center gap-2">
+              {/* Theme toggle */}
               <button
-                onClick={handleLogout}
-                className="rounded-md bg-white px-3 py-2 text-sm font-semibold text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 hover:bg-gray-50"
+                onClick={toggle}
+                aria-label="Toggle dark mode"
+                className="w-9 h-9 rounded-full flex items-center justify-center border border-border text-primary hover:brightness-110 transition"
               >
-                Sign out
+                {dark ? <Sun size={16} /> : <Moon size={16} />}
               </button>
+
+              {/* Notifications */}
               <NotificationsDropdown />
-            </div>
 
-            {/* Mobile menu button */}
-            <div className="flex items-center sm:hidden">
-              <button
-                type="button"
-                className="inline-flex items-center justify-center rounded-md p-2 text-gray-400 hover:bg-gray-100 hover:text-gray-500 focus:outline-none focus:ring-2 focus:ring-inset focus:ring-indigo-500"
-                aria-expanded="false"
-                onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-              >
-                <span className="sr-only">Open main menu</span>
-                {mobileMenuOpen ? (
-                  <svg className="block h-6 w-6" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
-                  </svg>
-                ) : (
-                  <svg className="block h-6 w-6" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 6.75h16.5M3.75 12h16.5m-16.5 5.25h16.5" />
-                  </svg>
+              {/* User menu (desktop) */}
+              <div className="hidden sm:block relative">
+                <button
+                  onClick={() => setUserMenuOpen(o => !o)}
+                  className="flex items-center gap-2 px-3 py-1.5 rounded-full border border-border text-sm text-primary hover:bg-pill-hover transition"
+                >
+                  <User size={14} />
+                  <span className="max-w-[120px] truncate">{user?.email?.split('@')[0]}</span>
+                  <ChevronDown size={12} />
+                </button>
+                {userMenuOpen && (
+                  <div
+                    className="absolute right-0 mt-2 w-52 rounded-xl shadow-lg border border-border overflow-hidden z-50"
+                    style={{ background: 'var(--surface)' }}
+                    onBlur={() => setUserMenuOpen(false)}
+                  >
+                    <Link
+                      to="/player-profile"
+                      onClick={() => setUserMenuOpen(false)}
+                      className="flex items-center gap-3 px-4 py-3 text-sm text-primary hover:bg-pill-hover transition"
+                    >
+                      <User size={14} /> Player Profile
+                    </Link>
+                    <Link
+                      to="/profile"
+                      onClick={() => setUserMenuOpen(false)}
+                      className="flex items-center gap-3 px-4 py-3 text-sm text-primary hover:bg-pill-hover transition"
+                    >
+                      <Shield size={14} /> Account
+                    </Link>
+                    <Link
+                      to="/my-registrations"
+                      onClick={() => setUserMenuOpen(false)}
+                      className="flex items-center gap-3 px-4 py-3 text-sm text-primary hover:bg-pill-hover transition"
+                    >
+                      <Trophy size={14} /> My Registrations
+                    </Link>
+                    <Link
+                      to="/bookings"
+                      onClick={() => setUserMenuOpen(false)}
+                      className="flex items-center gap-3 px-4 py-3 text-sm text-primary hover:bg-pill-hover transition"
+                    >
+                      <Calendar size={14} /> My Bookings
+                    </Link>
+                    {isAdmin && (
+                      <>
+                        <div className="border-t border-border" />
+                        <Link
+                          to="/admin/grounds"
+                          onClick={() => setUserMenuOpen(false)}
+                          className="flex items-center gap-3 px-4 py-3 text-sm text-primary hover:bg-pill-hover transition"
+                        >
+                          <MapPin size={14} /> Admin Grounds
+                        </Link>
+                        <Link
+                          to="/admin/reports"
+                          onClick={() => setUserMenuOpen(false)}
+                          className="flex items-center gap-3 px-4 py-3 text-sm text-primary hover:bg-pill-hover transition"
+                        >
+                          <Shield size={14} /> Report Queue
+                        </Link>
+                      </>
+                    )}
+                    <div className="border-t border-border" />
+                    <button
+                      onClick={() => { setUserMenuOpen(false); handleLogout(); }}
+                      className="flex items-center gap-3 w-full px-4 py-3 text-sm text-error hover:bg-pill-hover transition"
+                    >
+                      <LogOut size={14} /> Sign out
+                    </button>
+                  </div>
                 )}
+              </div>
+
+              {/* Mobile burger */}
+              <button
+                className="lg:hidden w-9 h-9 rounded-full flex items-center justify-center border border-border text-primary"
+                onClick={() => setMobileOpen(o => !o)}
+                aria-label="Open menu"
+              >
+                {mobileOpen ? <X size={18} /> : <Menu size={18} />}
               </button>
             </div>
-
           </div>
         </div>
 
         {/* Mobile menu */}
-        {mobileMenuOpen && (
-          <div className="sm:hidden border-t border-gray-200 pt-2 pb-3">
-            <div className="space-y-1 px-2">
-              {navLinks.map(link => (
+        {mobileOpen && (
+          <div className="lg:hidden border-t border-border" style={{ background: 'var(--surface)' }}>
+            <div className="px-4 py-3 flex flex-wrap gap-2">
+              {navLinks.map(({ to, label, startsWith }) => (
                 <NavLink
-                  key={link.to}
-                  to={link.to}
-                  onClick={() => setMobileMenuOpen(false)}
-                  className={({ isActive }) => mobileNavItemClass(isActive, link.startsWith)}
+                  key={to}
+                  to={to}
+                  onClick={() => setMobileOpen(false)}
+                  className={isActive(to, startsWith) ? activePill : inactivePill}
                 >
-                  {link.label}
+                  {label}
                 </NavLink>
               ))}
             </div>
-            <div className="border-t border-gray-200 mt-4 pt-4 px-4 pb-2">
-              <div className="text-sm font-medium text-gray-500 mb-3">{user?.email}</div>
+            <div className="border-t border-border px-4 py-3 flex flex-col gap-1">
+              <div className="text-xs text-secondary mb-1">{user?.email}</div>
+              <Link to="/player-profile" onClick={() => setMobileOpen(false)} className="text-sm text-primary py-1">Player Profile</Link>
+              <Link to="/profile" onClick={() => setMobileOpen(false)} className="text-sm text-primary py-1">Account</Link>
+              <Link to="/my-registrations" onClick={() => setMobileOpen(false)} className="text-sm text-primary py-1">My Registrations</Link>
+              <Link to="/bookings" onClick={() => setMobileOpen(false)} className="text-sm text-primary py-1">My Bookings</Link>
+              {isAdmin && (
+                <>
+                  <Link to="/admin/grounds" onClick={() => setMobileOpen(false)} className="text-sm text-primary py-1">Admin Grounds</Link>
+                  <Link to="/admin/reports" onClick={() => setMobileOpen(false)} className="text-sm text-primary py-1">Report Queue</Link>
+                </>
+              )}
               <button
-                onClick={handleLogout}
-                className="w-full text-left block px-3 py-2 rounded-md text-base font-medium text-gray-700 hover:bg-gray-50 hover:text-gray-900"
+                onClick={() => { setMobileOpen(false); handleLogout(); }}
+                className="text-left text-sm text-error py-1"
               >
                 Sign out
               </button>
             </div>
           </div>
         )}
-      </nav>
+      </header>
 
-      <main className="py-10">
+      <main className="py-8">
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
           <Outlet />
         </div>

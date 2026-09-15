@@ -1,9 +1,40 @@
+@import url('https://fonts.googleapis.com/css2?family=Fraunces:wght@500;600;700&family=Inter:wght@400;500;600&display=swap');
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
 @layer base {
+  :root {
+    --bg: #FAF7F2;
+    --surface: #FFFFFF;
+    --surface-elevated: #F9FAFB;
+    --text-primary: #241412;
+    --text-secondary: #6B5B54;
+    --text-muted: #9CA3AF;
+    --border: #E4DDD3;
+    --accent-maroon: #6E1423;
+    --accent-gold: #A87C3F;
+    --pill-hover: #F1E9DE;
+    --error: #EF4444;
+    --success: #10B981;
+  }
+  .dark {
+    --bg: #15100D;
+    --surface: #1D1613;
+    --surface-elevated: #271E19;
+    --text-primary: #F3EDE6;
+    --text-secondary: #B8AA9E;
+    --text-muted: #6B7280;
+    --border: #3A2E27;
+    --accent-maroon: #D8546A;
+    --accent-gold: #C79A54;
+    --pill-hover: #29201C;
+    --error: #F87171;
+    --success: #34D399;
+  }
+
   body {
-    @apply bg-gray-50 text-gray-900;
+    @apply bg-background text-primary font-sans antialiased;
   }
 }
