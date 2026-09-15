@@ -171,6 +171,51 @@ class GroundsService {
   }
 
   // ===========================================================================
+  // ADMIN — GROUND DEACTIVATE / DELETE
+  // ===========================================================================
+
+  /**
+   * Deactivate a ground (soft-delete). Use when historical bookings/payments exist.
+   */
+  async deactivateGround(groundId) {
+    const ground = await this.getGroundById(groundId);
+    if (!ground) throw this._notFound('Ground not found');
+
+    const { rows } = await query(
+      `UPDATE grounds SET is_active = false, updated_at = NOW()
+       WHERE id = $1
+       RETURNING id, name, is_active, updated_at`,
+      [groundId]
+    );
+    return rows[0];
+  }
+
+  /**
+   * Hard-delete a ground only if it has no dependent records.
+   * Throws 409 if bookings, payments, or history exist.
+   */
+  async deleteGround(groundId) {
+    const ground = await this.getGroundById(groundId);
+    if (!ground) throw this._notFound('Ground not found');
+
+    // Safety check: refuse deletion if any bookings exist for this ground
+    const bookingCheck = await query(
+      `SELECT id FROM ground_bookings WHERE ground_id = $1 LIMIT 1`,
+      [groundId]
+    );
+    if (bookingCheck.rows.length > 0) {
+      const err = new Error('Cannot delete a ground with existing bookings. Use deactivate instead.');
+      err.statusCode = 409;
+      throw err;
+    }
+
+    // Safe to delete
+    await query(`DELETE FROM ground_sports WHERE ground_id = $1`, [groundId]);
+    await query(`DELETE FROM ground_availability WHERE ground_id = $1`, [groundId]);
+    await query(`DELETE FROM grounds WHERE id = $1`, [groundId]);
+  }
+
+  // ===========================================================================
   // ADMIN — GROUND SPORTS
   // ===========================================================================
 

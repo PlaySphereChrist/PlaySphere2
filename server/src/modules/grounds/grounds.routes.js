@@ -31,6 +31,16 @@ router.patch(
   authenticate, authorizeRoles('ADMIN'),
   asyncHandler(ctrl.updateGround)
 );
+router.patch(
+  '/:groundId/deactivate',
+  authenticate, authorizeRoles('ADMIN'),
+  asyncHandler(ctrl.deactivateGround)
+);
+router.delete(
+  '/:groundId',
+  authenticate, authorizeRoles('ADMIN'),
+  asyncHandler(ctrl.deleteGround)
+);
 
 // ADMIN — Admin-only ground listing (includes inactive)
 router.get(

@@ -63,6 +63,14 @@ class TournamentsController {
     );
     res.json({ success: true, data: validation });
   }
+  /**
+   * DELETE /api/tournaments/:tournamentId
+   * Only permitted for draft tournaments with no dependent records.
+   */
+  async deleteTournament(req, res) {
+    await tournamentsService.deleteTournament(req.params.tournamentId, req.user);
+    res.json({ success: true, message: 'Tournament deleted successfully' });
+  }
 }
 
 module.exports = new TournamentsController();

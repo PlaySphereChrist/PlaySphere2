@@ -87,7 +87,7 @@ export default function PlayerProfilePage() {
 
   if (loading) return <Spinner size="lg" className="mt-20" />;
 
-  const isCreating = !profile && isEditing;
+
 
   return (
     <div className="max-w-3xl mx-auto space-y-6">

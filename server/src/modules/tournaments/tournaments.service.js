@@ -421,6 +421,61 @@ class TournamentsService {
   }
 
   // -------------------------------------------------------------------------
+  // DELETE — draft-only, no dependent records
+  // -------------------------------------------------------------------------
+
+  /**
+   * Permanently delete a tournament.
+   * Only permitted when status = 'draft' and there are no registrations, fixtures, or matches.
+   */
+  async deleteTournament(tournamentId, requestingUser) {
+    const tournament = await this.getTournament(tournamentId, requestingUser);
+
+    const isAdmin = requestingUser.roles?.includes('ADMIN');
+    const isOwner = tournament.organizer_user_id === requestingUser.id;
+
+    if (!isAdmin && !isOwner) {
+      throw this._forbidden('Only the organizer or an admin can delete a tournament');
+    }
+
+    if (tournament.status !== 'draft') {
+      const err = new Error(
+        `Cannot delete a tournament with status "${tournament.status}". ` +
+        'Only draft tournaments with no registrations may be deleted. Use archive/cancel for published tournaments.'
+      );
+      err.statusCode = 409;
+      throw err;
+    }
+
+    // Guard: no registrations
+    const { rows: regRows } = await query(
+      `SELECT id FROM tournament_registrations WHERE tournament_id = $1 LIMIT 1`,
+      [tournamentId]
+    );
+    if (regRows.length > 0) {
+      const err = new Error('Cannot delete a tournament that already has registrations. Use cancel/archive instead.');
+      err.statusCode = 409;
+      throw err;
+    }
+
+    // Guard: no fixtures or matches
+    const { rows: fixRows } = await query(
+      `SELECT id FROM fixtures WHERE tournament_id = $1 LIMIT 1`,
+      [tournamentId]
+    );
+    if (fixRows.length > 0) {
+      const err = new Error('Cannot delete a tournament that already has fixtures. Use cancel/archive instead.');
+      err.statusCode = 409;
+      throw err;
+    }
+
+    // Safe to delete
+    await query(`DELETE FROM tournament_status_history WHERE tournament_id = $1`, [tournamentId]);
+    await query(`DELETE FROM tournament_eligibility_rules WHERE tournament_id = $1`, [tournamentId]);
+    await query(`DELETE FROM tournaments WHERE id = $1`, [tournamentId]);
+  }
+
+  // -------------------------------------------------------------------------
   // STATUS TRANSITION — validated, transactional, with history
   // -------------------------------------------------------------------------
   async transitionStatus(tournamentId, requestingUser, newStatus, reason = null) {

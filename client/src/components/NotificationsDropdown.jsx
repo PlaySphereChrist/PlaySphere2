@@ -1,35 +1,41 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { api } from '../lib/api';
+import { useAuth } from '../store/AuthContext';
 
 export default function NotificationsDropdown() {
   const [isOpen, setIsOpen] = useState(false);
   const [notifications, setNotifications] = useState([]);
   const [unreadCount, setUnreadCount] = useState(0);
   const dropdownRef = useRef(null);
+  const { user } = useAuth();
 
-  const fetchUnreadCount = async () => {
+  const fetchUnreadCount = React.useCallback(async () => {
+    if (!user) return;
     try {
       const data = await api.get('/notifications/unread-count');
       setUnreadCount(data.unread_count);
     } catch (err) {
       console.error('Failed to fetch unread count:', err);
     }
-  };
+  }, [user]);
 
-  const fetchNotifications = async () => {
+  const fetchNotifications = React.useCallback(async () => {
+    if (!user) return;
     try {
       const data = await api.get('/notifications?limit=10');
       setNotifications(data.notifications);
     } catch (err) {
       console.error('Failed to fetch notifications:', err);
     }
-  };
+  }, [user]);
 
   useEffect(() => {
+    if (!user) return;
     fetchUnreadCount();
     const interval = window.setInterval(fetchUnreadCount, 60000); // Poll every minute
     return () => window.clearInterval(interval);
-  }, []);
+  }, [user, fetchUnreadCount]);
+
 
   useEffect(() => {
     const handleClickOutside = (event) => {

@@ -34,6 +34,16 @@ class GroundsController {
     res.json({ success: true, message: 'Ground updated successfully', data: { ground } });
   }
 
+  async deactivateGround(req, res) {
+    const ground = await groundsService.deactivateGround(req.params.groundId);
+    res.json({ success: true, message: 'Ground deactivated successfully', data: { ground } });
+  }
+
+  async deleteGround(req, res) {
+    await groundsService.deleteGround(req.params.groundId);
+    res.json({ success: true, message: 'Ground deleted successfully' });
+  }
+
   // ===========================================================================
   // ADMIN — GROUND SPORTS
   // ===========================================================================

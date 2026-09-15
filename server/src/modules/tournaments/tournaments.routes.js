@@ -40,6 +40,12 @@ router.use('/:tournamentId/waitlist', require('./waitlist.routes'));
 // PATCH /api/tournaments/:tournamentId — authenticated; ownership checked in service
 router.patch('/:tournamentId', authenticate, asyncHandler(ctrl.updateTournament));
 
-// No DELETE route — tournaments are archived via status transitions, not deleted.
+// DELETE /api/tournaments/:tournamentId — ORGANIZER/ADMIN only; draft + no dependents only
+router.delete(
+  '/:tournamentId',
+  authenticate,
+  authorizeRoles('ORGANIZER', 'ADMIN'),
+  asyncHandler(ctrl.deleteTournament)
+);
 
 module.exports = router;

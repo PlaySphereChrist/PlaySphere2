@@ -617,12 +617,20 @@ export default function SportsPage() {
   const loadMyProfiles = useCallback(async () => {
     setLoadingProfiles(true);
     try {
+      // Check if player profile exists first to avoid 404 spam
+      const profileRes = await api.get('/player-profiles/me');
+      if (!profileRes.data.profile) {
+        setHasPlayerProfile(false);
+        setMyProfiles([]);
+        setLoadingProfiles(false);
+        return;
+      }
+
       const res = await api.get('/player-profiles/me/sports');
       setMyProfiles(res.data.profiles || []);
       setHasPlayerProfile(true);
     } catch (err) {
       if (err.status === 404) {
-        // No player profile exists
         setHasPlayerProfile(false);
         setMyProfiles([]);
       } else {

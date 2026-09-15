@@ -99,6 +99,16 @@ export default function AdminGroundDetailsPage() {
     }
   };
 
+  const handleDeleteGround = async () => {
+    if (!window.confirm('Are you sure you want to permanently delete this ground? This cannot be undone.')) return;
+    try {
+      await api.delete(`/grounds/${groundId}`);
+      navigate('/admin/grounds');
+    } catch (err) {
+      window.alert(err.message || 'Cannot delete ground (it may have active bookings). Try deactivating instead.');
+    }
+  };
+
   if (loading) return <div className="flex justify-center py-12"><Spinner /></div>;
   if (error) return <div className="rounded-md bg-red-50 p-4 text-red-700">{error}</div>;
   if (!ground) return <div className="text-gray-500 py-12 text-center">Ground not found.</div>;
@@ -118,12 +128,20 @@ export default function AdminGroundDetailsPage() {
             <h3 className="text-lg font-medium text-gray-900">Details</h3>
             <p className="mt-1 text-sm text-gray-500">{ground.address}, {ground.city}</p>
           </div>
-          <button
-            onClick={handleToggleStatus}
-            className={`px-3 py-1 rounded text-sm font-medium ${ground.is_active ? 'bg-red-100 text-red-700' : 'bg-green-100 text-green-700'}`}
-          >
-            {ground.is_active ? 'Deactivate' : 'Activate'}
-          </button>
+          <div className="flex gap-2">
+            <button
+              onClick={handleToggleStatus}
+              className={`px-3 py-1 rounded text-sm font-medium ${ground.is_active ? 'bg-amber-100 text-amber-700 hover:bg-amber-200' : 'bg-green-100 text-green-700 hover:bg-green-200'}`}
+            >
+              {ground.is_active ? 'Deactivate' : 'Activate'}
+            </button>
+            <button
+              onClick={handleDeleteGround}
+              className="px-3 py-1 rounded text-sm font-medium bg-red-100 text-red-700 hover:bg-red-200"
+            >
+              Delete
+            </button>
+          </div>
         </div>
       </div>
 
