@@ -61,4 +61,12 @@ const updateMe = async (req, res) => {
   });
 };
 
-module.exports = { getMe, updateMe };
+const searchUsers = async (req, res) => {
+  const users = await usersService.searchUsers(req.query.q);
+  res.status(200).json({
+    success: true,
+    data: { users }
+  });
+};
+
+module.exports = { getMe, updateMe, searchUsers };

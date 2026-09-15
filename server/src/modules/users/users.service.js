@@ -40,4 +40,22 @@ const getUserById = async (userId) => {
   return result.rows[0];
 };
 
-module.exports = { getUserById };
+/**
+ * Searches users by email or display name
+ */
+const searchUsers = async (searchTerm) => {
+  if (!searchTerm || searchTerm.trim().length < 2) return [];
+  const q = `%${searchTerm.trim()}%`;
+  const result = await query(
+    `SELECT u.id, u.email, pp.display_name, pp.avatar_url
+     FROM users u
+     LEFT JOIN player_profiles pp ON pp.user_id = u.id
+     WHERE u.email ILIKE $1 OR pp.display_name ILIKE $1
+     ORDER BY pp.display_name ASC, u.email ASC
+     LIMIT 10`,
+    [q]
+  );
+  return result.rows;
+};
+
+module.exports = { getUserById, searchUsers };

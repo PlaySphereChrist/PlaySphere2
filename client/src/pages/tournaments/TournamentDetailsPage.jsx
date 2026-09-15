@@ -31,26 +31,30 @@ export default function TournamentDetailsPage() {
       const res = await api.get(`/tournaments/${tournamentId}`);
       setTournament(res.data.tournament);
 
-      // Load registration status
-      try {
-        const regRes = await api.get(`/tournaments/${tournamentId}/registrations/my`);
-        setMyRegistration(regRes.data.registration);
-      } catch (e) {
-        if (e.status !== 404) console.error(e);
-      }
+      // Load user-specific data if authenticated
+      if (user) {
+        try {
+          const regRes = await api.get(`/tournaments/${tournamentId}/registrations/my`);
+          setMyRegistration(regRes.data.registration);
+        } catch (e) {
+          if (e.status !== 404 && e.status !== 401) console.error(e);
+        }
 
-      // Load waitlist status
-      try {
-        const waitRes = await api.get(`/tournaments/${tournamentId}/waitlist/my`);
-        setMyWaitlist(waitRes.data.waitlist_entry);
-      } catch (e) {
-        if (e.status !== 404) console.error(e);
-      }
+        try {
+          const waitRes = await api.get(`/tournaments/${tournamentId}/waitlist/my`);
+          setMyWaitlist(waitRes.data.waitlist_entry);
+        } catch (e) {
+          if (e.status !== 404 && e.status !== 401) console.error(e);
+        }
 
-      // If team tournament, load user's teams
-      if (res.data.tournament.participation_type === 'team') {
-        const teamsRes = await api.get('/teams');
-        setMyTeams(teamsRes.data.teams || []);
+        if (res.data.tournament.participation_type === 'team') {
+          try {
+            const teamsRes = await api.get('/teams');
+            setMyTeams(teamsRes.data.teams || []);
+          } catch (e) {
+            if (e.status !== 401) console.error(e);
+          }
+        }
       }
 
     } catch (err) {
@@ -279,11 +283,11 @@ export default function TournamentDetailsPage() {
                     className="mt-1 block w-full rounded-md border-gray-300 py-2 pl-3 pr-10 text-base focus:border-indigo-500 focus:outline-none focus:ring-indigo-500 sm:text-sm"
                   >
                     <option value="">-- Select Team --</option>
-                    {myTeams.filter(t => t.sport_id === tournament.sport_id).map(t => (
+                    {myTeams.filter(t => t.sport_id === tournament.sport_id && t.is_manager).map(t => (
                       <option key={t.id} value={t.id}>{t.name}</option>
                     ))}
                   </select>
-                  {myTeams.length > 0 && myTeams.filter(t => t.sport_id === tournament.sport_id).length === 0 && (
+                  {myTeams.length > 0 && myTeams.filter(t => t.sport_id === tournament.sport_id && t.is_manager).length === 0 && (
                     <p className="mt-2 text-sm text-red-600">You manage no teams for this sport.</p>
                   )}
                 </div>

@@ -21,7 +21,11 @@ export default function TeamDetailsPage() {
   const [editError, setEditError] = useState('');
 
   // Invite
-  const [inviteUserId, setInviteUserId] = useState('');
+  const [inviteSearchQuery, setInviteSearchQuery] = useState('');
+  const [selectedUser, setSelectedUser] = useState(null);
+  const [searchResults, setSearchResults] = useState([]);
+  const [searchLoading, setSearchLoading] = useState(false);
+  
   const [inviteMessage, setInviteMessage] = useState('');
   const [inviteLoading, setInviteLoading] = useState(false);
   const [inviteError, setInviteError] = useState('');
@@ -55,6 +59,25 @@ export default function TeamDetailsPage() {
   useEffect(() => {
     fetchData();
   }, [fetchData]);
+
+  useEffect(() => {
+    if (inviteSearchQuery.length < 2) {
+      setSearchResults([]);
+      return;
+    }
+    const timer = window.setTimeout(async () => {
+      setSearchLoading(true);
+      try {
+        const res = await api.get(`/users/search?q=${encodeURIComponent(inviteSearchQuery)}`);
+        setSearchResults(res.data.users || []);
+      } catch (err) {
+        console.error(err);
+      } finally {
+        setSearchLoading(false);
+      }
+    }, 300);
+    return () => window.clearTimeout(timer);
+  }, [inviteSearchQuery]);
 
   const isManager = team?.manager_user_id === user?.id;
 
@@ -90,19 +113,20 @@ export default function TeamDetailsPage() {
     e.preventDefault();
     setInviteError('');
     setInviteSuccess('');
-    if (!inviteUserId.trim()) {
-      setInviteError('User ID is required.');
+    if (!selectedUser) {
+      setInviteError('Please select a user to invite.');
       return;
     }
 
     setInviteLoading(true);
     try {
       await api.post(`/teams/${teamId}/invitations`, { 
-        invited_user_id: inviteUserId.trim(), 
+        invited_user_id: selectedUser.id, 
         message: inviteMessage.trim() 
       });
       setInviteSuccess('Invitation sent successfully!');
-      setInviteUserId('');
+      setSelectedUser(null);
+      setInviteSearchQuery('');
       setInviteMessage('');
     } catch (err) {
       setInviteError(err.message || 'Failed to send invitation.');
@@ -313,16 +337,41 @@ export default function TeamDetailsPage() {
                 </div>
               )}
               <form onSubmit={handleInvite} className="space-y-4">
-                <div>
-                  <label className="block text-xs font-medium text-gray-700">User ID to invite *</label>
-                  <input
-                    type="text"
-                    required
-                    value={inviteUserId}
-                    onChange={(e) => setInviteUserId(e.target.value)}
-                    placeholder="Enter valid UUID"
-                    className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
-                  />
+                <div className="relative">
+                  <label className="block text-xs font-medium text-gray-700">Search User to invite *</label>
+                  {selectedUser ? (
+                    <div className="mt-1 flex items-center justify-between p-2 border border-green-300 bg-green-50 rounded-md">
+                      <span className="text-sm font-medium text-green-800">{selectedUser.display_name || selectedUser.email}</span>
+                      <button type="button" onClick={() => setSelectedUser(null)} className="text-green-600 hover:text-green-800 text-xs font-semibold">Clear</button>
+                    </div>
+                  ) : (
+                    <>
+                      <input
+                        type="text"
+                        value={inviteSearchQuery}
+                        onChange={(e) => setInviteSearchQuery(e.target.value)}
+                        placeholder="Type name or email..."
+                        className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
+                      />
+                      {searchLoading && <div className="absolute right-2 top-8 text-xs text-gray-500">Searching...</div>}
+                      {searchResults.length > 0 && (
+                        <ul className="absolute z-10 mt-1 max-h-40 w-full overflow-auto rounded-md bg-white py-1 text-base shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none sm:text-sm">
+                          {searchResults.map(u => (
+                            <li
+                              key={u.id}
+                              onClick={() => { setSelectedUser(u); setSearchResults([]); setInviteSearchQuery(''); }}
+                              className="relative cursor-pointer select-none py-2 pl-3 pr-9 text-gray-900 hover:bg-indigo-50"
+                            >
+                              <div className="flex flex-col">
+                                <span className="font-medium">{u.display_name || 'Unnamed Player'}</span>
+                                <span className="text-xs text-gray-500">{u.email}</span>
+                              </div>
+                            </li>
+                          ))}
+                        </ul>
+                      )}
+                    </>
+                  )}
                 </div>
                 <div>
                   <label className="block text-xs font-medium text-gray-700">Message (optional)</label>
