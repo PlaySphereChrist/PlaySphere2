@@ -107,7 +107,8 @@ class TournamentsService {
       `SELECT
          t.*,
          s.name  AS sport_name,
-         COALESCE(pp.display_name, split_part(u.email, '@', 1)) AS organizer_name
+         COALESCE(pp.display_name, split_part(u.email, '@', 1)) AS organizer_name,
+         (SELECT id FROM communities WHERE tournament_id = t.id LIMIT 1) AS community_id
        FROM tournaments t
        JOIN sports  s ON t.sport_id          = s.id
        JOIN users   u ON t.organizer_user_id = u.id
@@ -242,12 +243,26 @@ class TournamentsService {
 
       const tournamentId = insertRes.rows[0].id;
 
-      // Record creation in status history (null from_status — initial creation)
+      // Record creation in status history
       await client.query(
         `INSERT INTO tournament_status_history
            (tournament_id, from_status, to_status, changed_by_user_id, reason)
          VALUES ($1, NULL, 'draft', $2, 'Tournament created')`,
         [tournamentId, organizerUserId]
+      );
+
+      // Create dedicated community for this tournament
+      await client.query(
+        `INSERT INTO communities (name, description, sport_id, city, created_by_user_id, is_public, is_active, tournament_id)
+         VALUES ($1, $2, $3, $4, $5, true, true, $6)`,
+        [
+          `${name.trim()} Community`, 
+          `Official community and announcements for ${name.trim()}`,
+          sport_id,
+          city || null,
+          organizerUserId,
+          tournamentId
+        ]
       );
 
       await client.query('COMMIT');

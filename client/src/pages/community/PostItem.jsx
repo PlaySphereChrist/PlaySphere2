@@ -32,6 +32,23 @@ export default function PostItem({ post, currentUser, isMember, onUpdate }) {
     }
   };
 
+  const handleReact = async (reactionType) => {
+    if (!isMember) {
+      window.alert('You must join the community to react.');
+      return;
+    }
+    try {
+      const res = await api.request('POST', `/community/posts/${post.id}/react`, { reaction: reactionType });
+      if (res.success) {
+        onUpdate(); // refresh post data
+      } else {
+        window.alert(res.message);
+      }
+    } catch (err) {
+      window.alert(err.message);
+    }
+  };
+
   const handleEditSubmit = async (e) => {
     e.preventDefault();
     if (!editTitle.trim() || !editBody.trim()) return;
@@ -122,7 +139,15 @@ export default function PostItem({ post, currentUser, isMember, onUpdate }) {
               {post.body}
             </div>
 
-            <div className="mt-4 pt-3 border-t border-border">
+            <div className="mt-4 pt-3 border-t border-border flex items-center gap-6">
+              <button
+                onClick={() => handleReact('like')}
+                className={`text-sm transition flex items-center gap-2 font-medium ${post.user_reaction === 'like' ? 'text-maroon' : 'text-secondary hover:text-maroon'}`}
+              >
+                <span>{post.user_reaction === 'like' ? '❤️' : '🤍'}</span> 
+                {post.reactions?.find(r => r.type === 'like')?.count || 0} Likes
+              </button>
+              
               <button
                 onClick={() => setShowComments(!showComments)}
                 className="text-sm text-secondary hover:text-maroon transition flex items-center gap-2 font-medium"

@@ -1,3 +1,4 @@
+/* global FormData */
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { api } from '../../../lib/api';
@@ -37,7 +38,8 @@ export default function TournamentFormPage() {
     registration_opens_at: '',
     registration_closes_at: '',
     starts_at: '',
-    ends_at: ''
+    ends_at: '',
+    banner_url: ''
   });
 
   useEffect(() => {
@@ -66,7 +68,8 @@ export default function TournamentFormPage() {
             registration_opens_at: formatDate(t.registration_opens_at),
             registration_closes_at: formatDate(t.registration_closes_at),
             starts_at: formatDate(t.starts_at),
-            ends_at: formatDate(t.ends_at)
+            ends_at: formatDate(t.ends_at),
+            banner_url: t.banner_url || ''
           });
         }
       } catch (err) {
@@ -271,6 +274,45 @@ export default function TournamentFormPage() {
               value={formData.prize_pool}
               onChange={handleChange}
             />
+            <div className="sm:col-span-2">
+              <label className="block text-sm font-bold text-primary mb-2">Tournament Banner Cover</label>
+              <div className="flex items-center gap-4">
+                {formData.banner_url ? (
+                  <div className="relative w-32 h-20 rounded-md overflow-hidden bg-surface border border-border">
+                    <img src={formData.banner_url} alt="Banner Preview" className="w-full h-full object-cover" />
+                    <button type="button" onClick={() => setFormData(prev => ({...prev, banner_url: ''}))} className="absolute top-1 right-1 bg-error text-white rounded-full w-5 h-5 flex items-center justify-center text-xs opacity-80 hover:opacity-100">✕</button>
+                  </div>
+                ) : (
+                  <div className="w-32 h-20 rounded-md bg-surface border border-dashed border-border flex items-center justify-center text-xs text-secondary">
+                    No Cover
+                  </div>
+                )}
+                <div>
+                  <input
+                    type="file"
+                    accept="image/*"
+                    id="banner-upload"
+                    className="hidden"
+                    onChange={async (e) => {
+                      if (!e.target.files || e.target.files.length === 0) return;
+                      const file = e.target.files[0];
+                      const uploadData = new FormData();
+                      uploadData.append('image', file);
+                      try {
+                        const res = await api.post('/uploads/image', uploadData);
+                        setFormData(prev => ({...prev, banner_url: res.data.url}));
+                      } catch (err) {
+                        setError(err.message || 'Image upload failed');
+                      }
+                    }}
+                  />
+                  <label htmlFor="banner-upload" className="cursor-pointer inline-flex items-center justify-center bg-surface hover:bg-pill-hover border border-border text-primary font-medium px-4 py-2 rounded-md text-sm transition">
+                    Upload Image
+                  </label>
+                </div>
+              </div>
+            </div>
+
           </div>
 
           <div className="pt-6 flex justify-end gap-3 border-t border-border mt-6">

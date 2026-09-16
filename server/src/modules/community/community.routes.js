@@ -33,6 +33,7 @@ router.get('/posts',              asyncHandler(ctrl.listPosts));
 router.post('/posts',             asyncHandler(ctrl.createPost));
 router.get('/posts/:postId',      asyncHandler(ctrl.getPost));
 router.patch('/posts/:postId',    asyncHandler(ctrl.updatePost));
+router.post('/posts/:postId/react', asyncHandler(ctrl.reactToPost));
 router.post('/posts/:postId/archive',    asyncHandler(ctrl.archivePost));
 router.post('/posts/:postId/moderate',   authorizeRoles('ADMIN'), asyncHandler(ctrl.moderatePost));
 

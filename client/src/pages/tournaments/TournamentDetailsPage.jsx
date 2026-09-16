@@ -220,9 +220,16 @@ export default function TournamentDetailsPage() {
             <PsBadge variant={getStatusBadgeVariant(tournament.status)} className="self-start sm:self-end text-sm px-3 py-1">
               {tournament.status.replace(/_/g, ' ').toUpperCase()}
             </PsBadge>
-            <Link to={`/tournaments/${tournament.id}/matches`}>
-              <PsButton variant="secondary">View Matches</PsButton>
-            </Link>
+            <div className="flex gap-2">
+              <Link to={`/tournaments/${tournament.id}/matches`}>
+                <PsButton variant="secondary">Matches</PsButton>
+              </Link>
+              {tournament.community_id && (
+                <Link to={`/community?community_id=${tournament.community_id}`}>
+                  <PsButton variant="secondary">Community</PsButton>
+                </Link>
+              )}
+            </div>
           </div>
         </div>
 

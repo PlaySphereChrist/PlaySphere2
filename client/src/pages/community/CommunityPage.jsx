@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { api } from '../../lib/api';
 import { useAuth } from '../../store/AuthContext';
 import {
@@ -14,6 +15,10 @@ import PostItem from './PostItem';
 
 export default function CommunityPage() {
   const { user } = useAuth();
+  const [searchParams] = useSearchParams();
+  const communityId = searchParams.get('community_id');
+  const communityQuery = communityId ? `?community_id=${communityId}` : '';
+
   const [community, setCommunity] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -26,7 +31,7 @@ export default function CommunityPage() {
 
   const fetchCommunity = async () => {
     try {
-      const res = await api.request('GET', '/community');
+      const res = await api.request('GET', `/community${communityQuery}`);
       if (res.success) {
         setCommunity(res.community);
       } else {
@@ -45,7 +50,8 @@ export default function CommunityPage() {
       let found = false;
       let keepGoing = true;
       while (keepGoing) {
-        const res = await api.request('GET', `/community/members?limit=100&page=${page}`);
+        const querySep = communityQuery ? '&' : '?';
+        const res = await api.request('GET', `/community/members${communityQuery}${querySep}limit=100&page=${page}`);
         if (!res.success) break;
         found = res.members.some(m => m.user_id === user.id);
         if (found || res.members.length < 100 || (page * 100) >= res.total) {
@@ -63,7 +69,7 @@ export default function CommunityPage() {
   const fetchPosts = async () => {
     setPostsLoading(true);
     try {
-      const endpoint = activeTab === 'equipment' ? '/community/equipment-requests' : '/community/posts';
+      const endpoint = activeTab === 'equipment' ? `/community/equipment-requests${communityQuery}` : `/community/posts${communityQuery}`;
       const res = await api.request('GET', endpoint);
       if (res.success) {
         setPosts(res.posts || []);
@@ -81,17 +87,17 @@ export default function CommunityPage() {
     fetchCommunity();
     checkMembership();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [communityQuery]);
 
   useEffect(() => {
     fetchPosts();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [activeTab]);
+  }, [activeTab, communityQuery]);
 
   const handleJoinLeave = async () => {
     setMembershipLoading(true);
     try {
-      const endpoint = isMember ? '/community/leave' : '/community/join';
+      const endpoint = isMember ? `/community/leave${communityQuery}` : `/community/join${communityQuery}`;
       const res = await api.request('POST', endpoint);
       if (res.success) {
         setIsMember(!isMember);
@@ -160,6 +166,7 @@ export default function CommunityPage() {
           <CreatePostForm
             isEquipment={activeTab === 'equipment'}
             onCreated={fetchPosts}
+            communityQuery={communityQuery}
           />
         ) : (
           <PsAlert variant="info" className="mb-6">

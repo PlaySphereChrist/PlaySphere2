@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { api } from '../../lib/api';
 import { PsCard, PsInput, PsSelect, PsTextarea, PsButton, PsAlert } from '../../components/ui';
 
-export default function CreatePostForm({ onCreated, isEquipment = false }) {
+export default function CreatePostForm({ onCreated, isEquipment = false, communityQuery = '' }) {
   const [title, setTitle] = useState('');
   const [body, setBody] = useState('');
   const [category, setCategory] = useState(isEquipment ? 'equipment_request' : 'general');
@@ -16,7 +16,7 @@ export default function CreatePostForm({ onCreated, isEquipment = false }) {
     setSubmitting(true);
     setError(null);
     try {
-      const endpoint = isEquipment ? '/community/equipment-requests' : '/community/posts';
+      const endpoint = isEquipment ? `/community/equipment-requests${communityQuery}` : `/community/posts${communityQuery}`;
       const payload = isEquipment ? { title, body } : { title, body, category };
 
       const res = await api.request('POST', endpoint, payload);

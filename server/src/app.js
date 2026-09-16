@@ -52,7 +52,11 @@ app.use((req, res, next) => {
 app.use(requestLogger);
 
 // API Routes
+app.use('/api/uploads', require('./modules/uploads/uploads.routes'));
 app.use('/api', apiRoutes);
+
+// Static files for uploads
+app.use('/uploads', express.static(require('path').join(__dirname, '../../uploads')));
 
 // Error Handling
 app.use(notFound);

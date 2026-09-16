@@ -22,14 +22,30 @@ function assertUuid(val, label) {
   if (!val || !UUID_RE.test(val)) throw badReq(`${label} must be a valid UUID.`);
 }
 
-// ─── Fetch the unified community ──────────────────────────────────────────────
-async function _getCommunity() {
-  const res = await query(
-    `SELECT id, name, description, is_public, is_active, created_by_user_id, created_at, updated_at
-     FROM communities WHERE name = $1 AND is_active = TRUE LIMIT 1`,
-    [COMMUNITY_NAME]
-  );
-  if (!res.rows[0]) throw notFound('PlaySphere Global Community not found. Run the seed.');
+// ─── Fetch the unified community or tournament community ────────────────────
+async function _getCommunity(tournamentId = null, communityId = null) {
+  let res;
+  if (communityId) {
+    res = await query(
+      `SELECT id, name, description, is_public, is_active, created_by_user_id, created_at, updated_at
+       FROM communities WHERE id = $1 AND is_active = TRUE LIMIT 1`,
+      [communityId]
+    );
+  } else if (tournamentId) {
+    res = await query(
+      `SELECT id, name, description, is_public, is_active, created_by_user_id, created_at, updated_at
+       FROM communities WHERE tournament_id = $1 AND is_active = TRUE LIMIT 1`,
+      [tournamentId]
+    );
+  } else {
+    res = await query(
+      `SELECT id, name, description, is_public, is_active, created_by_user_id, created_at, updated_at
+       FROM communities WHERE name = $1 AND is_active = TRUE LIMIT 1`,
+      [COMMUNITY_NAME]
+    );
+  }
+  
+  if (!res.rows[0]) throw notFound('Community not found.');
   return res.rows[0];
 }
 
@@ -43,19 +59,20 @@ async function _isMember(communityId, userId) {
 }
 
 // ─── Role helpers ─────────────────────────────────────────────────────────────
-function isAdmin(userRoles)    { return Array.isArray(userRoles) && userRoles.includes('ADMIN'); }
-function isOrgOrAdmin(roles)   { return Array.isArray(roles) && (roles.includes('ORGANIZER') || roles.includes('ADMIN')); }
+function isAdmin(userRoles) { return Array.isArray(userRoles) && userRoles.includes('ADMIN'); }
 
 // ─── COMMUNITY ────────────────────────────────────────────────────────────────
 
-async function getCommunity() {
-  return _getCommunity();
+async function getCommunity(communityId) {
+  return _getCommunity(null, communityId);
 }
 
-async function updateCommunity(userId, userRoles, { description }) {
-  if (!isOrgOrAdmin(userRoles)) throw forbidden('Only ORGANIZER or ADMIN can update the community.');
+async function updateCommunity(communityId, userId, userRoles, { description }) {
   if (!description || !description.trim()) throw badReq('description is required.');
-  const community = await _getCommunity();
+  const community = await _getCommunity(null, communityId);
+  if (community.created_by_user_id !== userId && !isAdmin(userRoles)) {
+    throw forbidden('Only the community creator or an admin can update the community.');
+  }
   const res = await query(
     `UPDATE communities SET description = $1 WHERE id = $2
      RETURNING id, name, description, is_public, is_active, created_by_user_id, updated_at`,
@@ -66,8 +83,8 @@ async function updateCommunity(userId, userRoles, { description }) {
 
 // ─── MEMBERSHIP ───────────────────────────────────────────────────────────────
 
-async function getMembers(page = 1, limit = 50) {
-  const community = await _getCommunity();
+async function getMembers(communityId, page = 1, limit = 50) {
+  const community = await _getCommunity(null, communityId);
   const offset = Math.max(0, (page - 1) * limit);
   const res = await query(
     `SELECT cm.id, cm.user_id, cm.role, cm.joined_at, u.email
@@ -84,8 +101,8 @@ async function getMembers(page = 1, limit = 50) {
   return { members: res.rows, total: parseInt(countRes.rows[0].count, 10) };
 }
 
-async function joinCommunity(userId) {
-  const community = await _getCommunity();
+async function joinCommunity(communityId, userId) {
+  const community = await _getCommunity(null, communityId);
   const existing = await query(
     'SELECT id FROM community_members WHERE community_id = $1 AND user_id = $2',
     [community.id, userId]
@@ -99,8 +116,8 @@ async function joinCommunity(userId) {
   return { communityId: community.id, membership: res.rows[0] };
 }
 
-async function leaveCommunity(userId) {
-  const community = await _getCommunity();
+async function leaveCommunity(communityId, userId) {
+  const community = await _getCommunity(null, communityId);
   const res = await query(
     'DELETE FROM community_members WHERE community_id = $1 AND user_id = $2 RETURNING id',
     [community.id, userId]
@@ -113,13 +130,13 @@ async function leaveCommunity(userId) {
 
 const VALID_CATEGORIES = ['general', 'equipment_request', 'looking_for_players', 'event_announcement', 'discussion', 'feedback'];
 
-async function listPosts(page = 1, limit = 20, category = null) {
-  const community = await _getCommunity();
+async function listPosts(communityId, userId, page = 1, limit = 20, category = null) {
+  const community = await _getCommunity(null, communityId);
   const offset = Math.max(0, (page - 1) * limit);
   if (category && !VALID_CATEGORIES.includes(category)) {
     throw badReq(`category must be one of: ${VALID_CATEGORIES.join(', ')}`);
   }
-  const params = [community.id, limit, offset];
+  const params = [community.id, limit, offset, userId]; // userId is $4
   let categoryClause = '';
   if (category) {
     params.push(category);
@@ -128,8 +145,11 @@ async function listPosts(page = 1, limit = 20, category = null) {
   const res = await query(
     `SELECT p.id, p.title, p.body, p.category, p.is_pinned, p.is_locked,
             p.is_deleted, p.is_moderated, p.moderation_reason,
-            p.created_at, p.updated_at, p.author_user_id, u.email AS author_email,
-            (SELECT COUNT(*) FROM comments c WHERE c.post_id = p.id AND c.is_deleted = FALSE) AS comment_count
+            p.created_at, p.updated_at, p.author_user_id, p.community_id, u.email AS author_email,
+            (SELECT COUNT(*) FROM comments c WHERE c.post_id = p.id AND c.is_deleted = FALSE) AS comment_count,
+            (SELECT COALESCE(json_agg(json_build_object('type', r.reaction_type, 'count', r.cnt)), '[]')
+             FROM (SELECT reaction_type, COUNT(*) as cnt FROM post_reactions WHERE post_id = p.id GROUP BY reaction_type) r) AS reactions,
+            (SELECT reaction_type FROM post_reactions WHERE post_id = p.id AND user_id = $4 LIMIT 1) AS user_reaction
      FROM posts p
      JOIN users u ON u.id = p.author_user_id
      WHERE p.community_id = $1
@@ -150,7 +170,7 @@ async function listPosts(page = 1, limit = 20, category = null) {
   return { posts: res.rows, total: parseInt(countRes.rows[0].count, 10) };
 }
 
-async function createPost(userId, userRoles, { title, body, category = 'general' }) {
+async function createPost(communityId, userId, userRoles, { title, body, category = 'general' }) {
   if (!title || !title.trim()) throw badReq('title is required.');
   if (!body  || !body.trim())  throw badReq('body is required.');
   if (title.trim().length > 300) throw badReq('title must be ≤ 300 characters.');
@@ -158,9 +178,17 @@ async function createPost(userId, userRoles, { title, body, category = 'general'
   if (!VALID_CATEGORIES.includes(category)) {
     throw badReq(`category must be one of: ${VALID_CATEGORIES.join(', ')}`);
   }
-  const community = await _getCommunity();
+  const community = await _getCommunity(null, communityId);
   const member = await _isMember(community.id, userId);
-  if (!member) throw forbidden('You must join the community before posting.');
+  
+  if (category === 'event_announcement') {
+    if (community.created_by_user_id !== userId && !isAdmin(userRoles)) {
+      throw forbidden('Only the community creator (organizer) or an admin can post event announcements.');
+    }
+  } else {
+    if (!member) throw forbidden('You must join the community before posting.');
+  }
+
   const res = await query(
     `INSERT INTO posts (community_id, author_user_id, title, body, category)
      VALUES ($1, $2, $3, $4, $5::post_category_type)
@@ -170,15 +198,18 @@ async function createPost(userId, userRoles, { title, body, category = 'general'
   return res.rows[0];
 }
 
-async function getPost(postId) {
+async function getPost(postId, userId = null) {
   assertUuid(postId, 'postId');
   const res = await query(
     `SELECT p.id, p.title, p.body, p.category, p.is_pinned, p.is_locked,
             p.is_deleted, p.is_moderated, p.moderation_reason,
-            p.created_at, p.updated_at, p.author_user_id, u.email AS author_email
+            p.created_at, p.updated_at, p.author_user_id, p.community_id, u.email AS author_email,
+            (SELECT COALESCE(json_agg(json_build_object('type', r.reaction_type, 'count', r.cnt)), '[]')
+             FROM (SELECT reaction_type, COUNT(*) as cnt FROM post_reactions WHERE post_id = p.id GROUP BY reaction_type) r) AS reactions,
+            (SELECT reaction_type FROM post_reactions WHERE post_id = p.id AND user_id = $2 LIMIT 1) AS user_reaction
      FROM posts p JOIN users u ON u.id = p.author_user_id
      WHERE p.id = $1 AND p.is_deleted = FALSE`,
-    [postId]
+    [postId, userId]
   );
   if (!res.rows[0]) throw notFound('Post not found.');
   return res.rows[0];
@@ -214,6 +245,33 @@ async function archivePost(postId, userId, userRoles) {
   return res.rows[0];
 }
 
+async function reactToPost(postId, userId, reaction) {
+  if (!reaction || typeof reaction !== 'string') throw badReq('reaction must be a string.');
+  
+  const post = await getPost(postId);
+  const member = await _isMember(post.community_id, userId);
+  if (!member) throw forbidden('You must join the community to react.');
+
+  // Check if reaction exists
+  const existing = await query('SELECT id, reaction_type FROM post_reactions WHERE post_id = $1 AND user_id = $2', [postId, userId]);
+  
+  if (existing.rows.length > 0) {
+    if (existing.rows[0].reaction_type === reaction) {
+      // Toggle off
+      await query('DELETE FROM post_reactions WHERE post_id = $1 AND user_id = $2', [postId, userId]);
+      return { message: 'Reaction removed', action: 'removed' };
+    } else {
+      // Change reaction
+      await query('UPDATE post_reactions SET reaction_type = $1 WHERE post_id = $2 AND user_id = $3', [reaction, postId, userId]);
+      return { message: 'Reaction updated', action: 'updated', reaction };
+    }
+  } else {
+    // Add reaction
+    await query('INSERT INTO post_reactions (post_id, user_id, reaction_type) VALUES ($1, $2, $3)', [postId, userId, reaction]);
+    return { message: 'Reaction added', action: 'added', reaction };
+  }
+}
+
 async function moderatePost(postId, adminUserId, userRoles, { moderate, reason }) {
   if (!isAdmin(userRoles)) throw forbidden('Only ADMIN can moderate posts.');
   assertUuid(postId, 'postId');
@@ -245,12 +303,12 @@ async function listComments(postId, page = 1, limit = 50) {
   return { comments: res.rows };
 }
 
-async function createComment(postId, userId, userRoles, { body, parentCommentId = null }) {
+async function createComment(postId, userId, userRoles, { body, parentCommentId = null }, communityId = null) {
   const post = await getPost(postId);
   if (post.is_locked) throw forbidden('Post is locked. Comments are disabled.');
   if (!body || !body.trim()) throw badReq('body is required.');
   if (body.trim().length > 5000) throw badReq('body must be ≤ 5000 characters.');
-  const community = await _getCommunity();
+  const community = await _getCommunity(null, communityId);
   const member = await _isMember(community.id, userId);
   if (!member) throw forbidden('You must join the community before commenting.');
   if (parentCommentId) {
@@ -321,16 +379,16 @@ async function moderateComment(commentId, adminUserId, userRoles, { moderate, re
 
 // ─── EQUIPMENT REQUESTS (posts with category = 'equipment_request') ───────────
 
-async function listEquipmentRequests(page = 1, limit = 20) {
-  return listPosts(page, limit, 'equipment_request');
+async function listEquipmentRequests(communityId, userId, page = 1, limit = 20) {
+  return listPosts(communityId, userId, page, limit, 'equipment_request');
 }
 
-async function createEquipmentRequest(userId, userRoles, { title, body }) {
-  return createPost(userId, userRoles, { title, body, category: 'equipment_request' });
+async function createEquipmentRequest(communityId, userId, userRoles, { title, body }) {
+  return createPost(communityId, userId, userRoles, { title, body, category: 'equipment_request' });
 }
 
-async function getEquipmentRequest(requestId) {
-  const post = await getPost(requestId);
+async function getEquipmentRequest(requestId, userId = null) {
+  const post = await getPost(requestId, userId);
   if (post.category !== 'equipment_request') throw notFound('Equipment request not found.');
   return post;
 }
@@ -430,6 +488,7 @@ module.exports = {
   updatePost,
   archivePost,
   moderatePost,
+  reactToPost,
   listComments,
   createComment,
   getComment,

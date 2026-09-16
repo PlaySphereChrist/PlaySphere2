@@ -1,3 +1,4 @@
+/* global FormData */
 /**
  * PlaySphere API utility.
  * - Injects JWT access token from localStorage.
@@ -43,13 +44,18 @@ export const api = {
   getToken: () => localStorage.getItem('accessToken'),
 
   async request(method, endpoint, body = null, _retry = true) {
-    const headers = { 'Content-Type': 'application/json' };
+    const headers = {};
+    if (!(body instanceof FormData)) {
+      headers['Content-Type'] = 'application/json';
+    }
 
     const token = this.getToken();
     if (token) headers['Authorization'] = `Bearer ${token}`;
 
     const options = { method, headers };
-    if (body) options.body = JSON.stringify(body);
+    if (body) {
+      options.body = (body instanceof FormData) ? body : JSON.stringify(body);
+    }
 
     const response = await fetch(`${BASE_URL}${endpoint}`, options);
     const data = await response.json();
