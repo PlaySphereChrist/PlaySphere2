@@ -1,10 +1,17 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { api } from '../../lib/api';
-import Spinner from '../../components/Spinner';
-import ErrorMessage from '../../components/ErrorMessage';
-import TournamentStatusBadge from '../../components/TournamentStatusBadge';
 import { useAuth } from '../../store/AuthContext';
+import {
+  PsButton,
+  PsCard,
+  PsSelect,
+  PsBadge,
+  PsAlert,
+  PsPageHeader,
+  PsLoading,
+  PsEmpty
+} from '../../components/ui';
 
 export default function TournamentsPage() {
   const [tournaments, setTournaments] = useState([]);
@@ -51,93 +58,121 @@ export default function TournamentsPage() {
     fetchTournaments();
   }, [sportId, status, isOrganizerOrAdmin]);
 
-  return (
-    <div className="max-w-7xl mx-auto space-y-6">
-      <div className="flex justify-between items-center">
-        <h1 className="text-2xl font-semibold text-gray-900">Tournaments</h1>
-        {isOrganizerOrAdmin && (
-          <Link
-            to="/organizer/tournaments"
-            className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-indigo-700 bg-indigo-100 hover:bg-indigo-200"
-          >
-            Manage Tournaments
-          </Link>
-        )}
-      </div>
+  const getSportEmoji = (name) => {
+    const lower = name?.toLowerCase() || '';
+    if (lower.includes('football')) return '⚽';
+    if (lower.includes('basketball')) return '🏀';
+    if (lower.includes('cricket')) return '🏏';
+    if (lower.includes('volleyball')) return '🏐';
+    return '🏆';
+  };
 
-      <div className="bg-white p-4 shadow sm:rounded-md">
+  const getStatusBadgeVariant = (s) => {
+    switch (s) {
+      case 'registration_open': return 'success';
+      case 'in_progress': return 'maroon';
+      case 'completed': return 'default';
+      case 'cancelled': return 'danger';
+      case 'draft': return 'warning';
+      default: return 'default';
+    }
+  };
+
+  const getStatusLabel = (s) => {
+    return s.split('_').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
+  };
+
+  return (
+    <div className="space-y-6">
+      <PsPageHeader 
+        title="Tournaments" 
+        actions={
+          isOrganizerOrAdmin && (
+            <Link to="/organizer/tournaments">
+              <PsButton variant="secondary">Manage Tournaments</PsButton>
+            </Link>
+          )
+        }
+      />
+
+      <PsCard className="p-4">
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-          <div>
-            <label className="block text-sm font-medium text-gray-700">Sport</label>
-            <select
-              value={sportId}
-              onChange={(e) => setSportId(e.target.value)}
-              className="mt-1 block w-full rounded-md border-gray-300 py-2 pl-3 pr-10 text-base focus:border-indigo-500 focus:outline-none focus:ring-indigo-500 sm:text-sm"
-            >
-              <option value="">All Sports</option>
-              {sports.map(s => (
-                <option key={s.id} value={s.id}>{s.name}</option>
-              ))}
-            </select>
-          </div>
+          <PsSelect
+            label="Sport"
+            value={sportId}
+            onChange={(e) => setSportId(e.target.value)}
+          >
+            <option value="">All Sports</option>
+            {sports.map(s => (
+              <option key={s.id} value={s.id}>{s.name}</option>
+            ))}
+          </PsSelect>
           
           {isOrganizerOrAdmin && (
-            <div>
-              <label className="block text-sm font-medium text-gray-700">Status</label>
-              <select
-                value={status}
-                onChange={(e) => setStatus(e.target.value)}
-                className="mt-1 block w-full rounded-md border-gray-300 py-2 pl-3 pr-10 text-base focus:border-indigo-500 focus:outline-none focus:ring-indigo-500 sm:text-sm"
-              >
-                <option value="">All Statuses</option>
-                <option value="draft">Draft</option>
-                <option value="registration_open">Registration Open</option>
-                <option value="registration_closed">Registration Closed</option>
-                <option value="in_progress">In Progress</option>
-                <option value="completed">Completed</option>
-              </select>
-            </div>
+            <PsSelect
+              label="Status"
+              value={status}
+              onChange={(e) => setStatus(e.target.value)}
+            >
+              <option value="">All Statuses</option>
+              <option value="draft">Draft</option>
+              <option value="registration_open">Registration Open</option>
+              <option value="registration_closed">Registration Closed</option>
+              <option value="in_progress">In Progress</option>
+              <option value="completed">Completed</option>
+            </PsSelect>
           )}
         </div>
-      </div>
+      </PsCard>
 
-      <ErrorMessage message={error} />
+      {error && <PsAlert variant="error">{error}</PsAlert>}
 
       {loading ? (
-        <div className="py-12"><Spinner /></div>
+        <PsLoading />
       ) : tournaments.length === 0 ? (
-        <div className="text-center py-12 bg-white shadow sm:rounded-lg">
-          <p className="text-sm text-gray-500">No tournaments found matching your criteria.</p>
-        </div>
+        <PsEmpty title="No tournaments found" message="Try adjusting your filters." />
       ) : (
         <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
           {tournaments.map(tournament => (
-            <div key={tournament.id} className="bg-white overflow-hidden shadow rounded-lg flex flex-col">
-              <div className="p-6 flex-grow">
-                <div className="flex items-center justify-between mb-4">
-                  <span className="inline-flex items-center rounded-full bg-blue-50 px-2.5 py-0.5 text-xs font-medium text-blue-700">
+            <PsCard key={tournament.id} className="flex flex-col hover:border-maroon/50 transition h-full">
+              <div className="p-6 flex-grow flex flex-col">
+                <div className="flex items-start justify-between mb-3 gap-2">
+                  <PsBadge variant="default" className="shrink-0 flex items-center gap-1">
+                    <span>{getSportEmoji(tournament.sport_name)}</span>
                     {tournament.sport_name}
-                  </span>
-                  <TournamentStatusBadge status={tournament.status} />
+                  </PsBadge>
+                  <PsBadge variant={getStatusBadgeVariant(tournament.status)} className="shrink-0">
+                    {getStatusLabel(tournament.status)}
+                  </PsBadge>
                 </div>
-                <h3 className="text-xl font-bold text-gray-900 mb-2 truncate" title={tournament.name}>
+                
+                <h3 className="text-xl font-serif font-bold text-primary mb-3 leading-tight">
                   {tournament.name}
                 </h3>
-                <div className="space-y-2 text-sm text-gray-600">
-                  <p>📅 {new Date(tournament.starts_at).toLocaleDateString()} - {new Date(tournament.ends_at).toLocaleDateString()}</p>
-                  <p>👥 {tournament.participation_type === 'team' ? 'Team' : 'Individual'} ({tournament.format.replace(/_/g, ' ')})</p>
-                  <p>📍 {tournament.city || 'Online / TBD'}</p>
+                
+                <div className="mt-auto space-y-2 text-sm text-secondary">
+                  <p className="flex items-center gap-2">
+                    <span className="text-muted">📅</span> 
+                    {new Date(tournament.starts_at).toLocaleDateString()} - {new Date(tournament.ends_at).toLocaleDateString()}
+                  </p>
+                  <p className="flex items-center gap-2 text-xs">
+                    <span className="text-muted">👥</span> 
+                    <span className="capitalize">{tournament.participation_type}</span> ({tournament.format.replace(/_/g, ' ')})
+                  </p>
+                  <p className="flex items-center gap-2 text-xs">
+                    <span className="text-muted">📍</span> 
+                    {tournament.city || 'TBD'}
+                  </p>
                 </div>
               </div>
-              <div className="bg-gray-50 px-6 py-4 border-t border-gray-200">
-                <Link
-                  to={`/tournaments/${tournament.id}`}
-                  className="w-full inline-flex justify-center rounded-md bg-white px-3 py-2 text-sm font-semibold text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 hover:bg-gray-50"
-                >
-                  View Details
+              <div className="px-6 py-4 border-t border-border bg-pill-hover rounded-b-2xl">
+                <Link to={`/tournaments/${tournament.id}`}>
+                  <PsButton variant="secondary" className="w-full">
+                    View Details
+                  </PsButton>
                 </Link>
               </div>
-            </div>
+            </PsCard>
           ))}
         </div>
       )}

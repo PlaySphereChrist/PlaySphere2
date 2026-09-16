@@ -2,6 +2,14 @@ import { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { api } from '../lib/api';
 import { useAuth } from '../store/AuthContext';
+import {
+  PsButton,
+  PsCard,
+  PsBadge,
+  PsAlert,
+  PsLoading,
+  PsBackButton
+} from '../components/ui';
 
 export default function CasualGameDetailsPage() {
   const { gameId } = useParams();
@@ -66,143 +74,161 @@ export default function CasualGameDetailsPage() {
     }
   };
 
-  if (loading) return <div className="p-8 text-center">Loading game...</div>;
-  if (error) return <div className="p-8 text-center text-red-600">{error}</div>;
-  if (!game) return <div className="p-8 text-center">Game not found</div>;
+  if (loading) return <PsLoading />;
+  
+  if (error && !game) {
+    return (
+      <div className="space-y-4">
+        <PsBackButton to="/casual-games" label="Back to Casual Games" />
+        <PsAlert variant="error">{error}</PsAlert>
+      </div>
+    );
+  }
+  
+  if (!game) return null;
 
   const isCreator = user?.id === game.organized_by_user_id;
   const isParticipant = game.participants?.some(p => p.user_id === user?.id);
 
+  const getStatusVariant = (s) => {
+    switch (s) {
+      case 'open': return 'success';
+      case 'full': return 'warning';
+      case 'cancelled': return 'danger';
+      case 'completed': return 'default';
+      default: return 'default';
+    }
+  };
+
   return (
-    <div className="max-w-4xl mx-auto py-6 sm:px-6 lg:px-8">
-      <div className="bg-white shadow overflow-hidden sm:rounded-lg mb-6">
-        <div className="px-4 py-5 sm:px-6 flex justify-between items-center flex-wrap gap-4">
+    <div className="max-w-4xl mx-auto space-y-6 pb-12">
+      <PsBackButton to="/casual-games" label="Back to Casual Games" />
+
+      {error && <PsAlert variant="error">{error}</PsAlert>}
+
+      <PsCard>
+        <div className="px-6 py-5 flex flex-col sm:flex-row justify-between items-start gap-4 border-b border-border bg-pill-hover rounded-t-2xl">
           <div>
-            <h3 className="text-2xl leading-6 font-bold text-gray-900">{game.title}</h3>
-            <p className="mt-1 max-w-2xl text-sm text-gray-500">
+            <h1 className="text-3xl font-serif font-bold text-primary">{game.title}</h1>
+            <p className="mt-1 text-sm text-secondary">
               {game.sport_name} • Organized by {isCreator ? 'You' : game.creator_name}
             </p>
           </div>
-          <div className="flex space-x-3">
-            <span className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-medium ${
-              game.status === 'open' ? 'bg-green-100 text-green-800' :
-              game.status === 'full' ? 'bg-yellow-100 text-yellow-800' :
-              'bg-gray-100 text-gray-800'
-            }`}>
-              {game.status.toUpperCase()}
-            </span>
-            
-            {isCreator && game.status !== 'cancelled' && game.status !== 'completed' && (
-              <>
-                <Link
-                  to={`/casual-games/${game.id}/edit`}
-                  className="inline-flex items-center px-4 py-2 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50"
-                >
-                  Edit
-                </Link>
-                <button
-                  onClick={handleCancel}
-                  disabled={actionLoading}
-                  className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-red-600 hover:bg-red-700 disabled:opacity-50"
-                >
-                  Cancel Game
-                </button>
-              </>
-            )}
-            
-            {!isCreator && isParticipant && game.status !== 'cancelled' && game.status !== 'completed' && (
-              <button
-                onClick={handleLeave}
-                disabled={actionLoading}
-                className="inline-flex items-center px-4 py-2 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-red-700 bg-white hover:bg-red-50 disabled:opacity-50"
-              >
-                Leave Game
-              </button>
-            )}
-            
-            {!isCreator && !isParticipant && game.status === 'open' && (
-              <button
-                onClick={handleJoin}
-                disabled={actionLoading}
-                className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50"
-              >
-                Join Game
-              </button>
-            )}
+          <PsBadge variant={getStatusVariant(game.status)}>
+            {game.status.toUpperCase()}
+          </PsBadge>
+        </div>
+        
+        <div className="p-6 grid grid-cols-1 sm:grid-cols-2 gap-6">
+          <div>
+            <p className="text-sm font-medium text-secondary">Date &amp; Time</p>
+            <p className="mt-1 text-sm text-primary">
+              {new Date(game.scheduled_at).toLocaleDateString()} at {new Date(game.scheduled_at).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
+            </p>
           </div>
+          <div>
+            <p className="text-sm font-medium text-secondary">Location</p>
+            <p className="mt-1 text-sm text-primary">
+              {game.location_name}
+            </p>
+          </div>
+          <div>
+            <p className="text-sm font-medium text-secondary">Skill Level</p>
+            <p className="mt-1 text-sm text-primary">
+              {game.skill_level}
+            </p>
+          </div>
+          <div>
+            <p className="text-sm font-medium text-secondary">Participants</p>
+            <p className="mt-1 text-sm text-primary">
+              {game.current_participants} / {game.max_participants} ({(game.max_participants - game.current_participants)} slots available)
+            </p>
+          </div>
+          {game.description && (
+            <div className="sm:col-span-2">
+              <p className="text-sm font-medium text-secondary">Description</p>
+              <p className="mt-1 text-sm text-primary whitespace-pre-wrap leading-relaxed">
+                {game.description}
+              </p>
+            </div>
+          )}
         </div>
-        <div className="border-t border-gray-200 px-4 py-5 sm:p-0">
-          <dl className="sm:divide-y sm:divide-gray-200">
-            <div className="py-4 sm:py-5 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6">
-              <dt className="text-sm font-medium text-gray-500">Date & Time</dt>
-              <dd className="mt-1 text-sm text-gray-900 sm:mt-0 sm:col-span-2">
-                {new Date(game.scheduled_at).toLocaleDateString()} at {new Date(game.scheduled_at).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
-              </dd>
-            </div>
-            <div className="py-4 sm:py-5 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6">
-              <dt className="text-sm font-medium text-gray-500">Location</dt>
-              <dd className="mt-1 text-sm text-gray-900 sm:mt-0 sm:col-span-2">
-                {game.location_name}
-              </dd>
-            </div>
-            <div className="py-4 sm:py-5 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6">
-              <dt className="text-sm font-medium text-gray-500">Skill Level</dt>
-              <dd className="mt-1 text-sm text-gray-900 sm:mt-0 sm:col-span-2">
-                {game.skill_level}
-              </dd>
-            </div>
-            <div className="py-4 sm:py-5 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6">
-              <dt className="text-sm font-medium text-gray-500">Participants</dt>
-              <dd className="mt-1 text-sm text-gray-900 sm:mt-0 sm:col-span-2">
-                {game.current_participants} / {game.max_participants} ({(game.max_participants - game.current_participants)} slots available)
-              </dd>
-            </div>
-            {game.description && (
-              <div className="py-4 sm:py-5 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6">
-                <dt className="text-sm font-medium text-gray-500">Description</dt>
-                <dd className="mt-1 text-sm text-gray-900 sm:mt-0 sm:col-span-2 whitespace-pre-wrap">
-                  {game.description}
-                </dd>
-              </div>
-            )}
-          </dl>
+        
+        <div className="px-6 py-4 bg-pill flex flex-wrap gap-3 rounded-b-2xl border-t border-border">
+          {isCreator && game.status !== 'cancelled' && game.status !== 'completed' && (
+            <>
+              <Link to={`/casual-games/${game.id}/edit`}>
+                <PsButton variant="secondary">Edit Game</PsButton>
+              </Link>
+              <PsButton
+                variant="danger"
+                onClick={handleCancel}
+                disabled={actionLoading}
+                className="bg-transparent text-error hover:bg-error/10 border border-error/50"
+              >
+                Cancel Game
+              </PsButton>
+            </>
+          )}
+          
+          {!isCreator && isParticipant && game.status !== 'cancelled' && game.status !== 'completed' && (
+            <PsButton
+              variant="danger"
+              onClick={handleLeave}
+              disabled={actionLoading}
+              className="bg-transparent text-error hover:bg-error/10 border border-error/50"
+            >
+              Leave Game
+            </PsButton>
+          )}
+          
+          {!isCreator && !isParticipant && game.status === 'open' && (
+            <PsButton
+              onClick={handleJoin}
+              disabled={actionLoading}
+            >
+              Join Game
+            </PsButton>
+          )}
         </div>
-      </div>
+      </PsCard>
 
-      <div className="bg-white shadow overflow-hidden sm:rounded-lg">
-        <div className="px-4 py-5 sm:px-6 border-b border-gray-200">
-          <h3 className="text-lg leading-6 font-medium text-gray-900">Players ({game.participants?.length || 0})</h3>
+      <PsCard>
+        <div className="px-6 py-4 border-b border-border bg-pill-hover rounded-t-2xl">
+          <h3 className="text-lg font-serif font-bold text-primary">
+            Players ({game.participants?.length || 0})
+          </h3>
         </div>
-        <ul className="divide-y divide-gray-200">
+        <ul className="divide-y divide-border">
           {game.participants?.map((participant) => (
-            <li key={participant.participant_id} className="px-4 py-4 sm:px-6 flex items-center justify-between">
+            <li key={participant.participant_id} className="px-6 py-4 flex items-center justify-between hover:bg-pill-hover transition">
               <div className="flex items-center">
-                <div className="flex-shrink-0 h-10 w-10 bg-gray-200 rounded-full flex items-center justify-center overflow-hidden">
+                <div className="flex-shrink-0 h-12 w-12 bg-maroon/10 border border-maroon/20 rounded-full flex items-center justify-center overflow-hidden">
                   {participant.avatar_url ? (
-                    <img src={participant.avatar_url} alt="" className="h-10 w-10 object-cover" />
+                    <img src={participant.avatar_url} alt="" className="h-full w-full object-cover" />
                   ) : (
-                    <span className="text-gray-500 font-medium text-lg">{participant.user_name.charAt(0).toUpperCase()}</span>
+                    <span className="text-maroon font-serif font-bold text-lg">{participant.user_name.charAt(0).toUpperCase()}</span>
                   )}
                 </div>
                 <div className="ml-4">
-                  <div className="text-sm font-medium text-gray-900">
-                    {participant.user_name} {participant.user_id === game.organized_by_user_id && '(Organizer)'}
+                  <div className="text-sm font-bold text-primary">
+                    {participant.user_name} {participant.user_id === game.organized_by_user_id && <span className="font-normal text-secondary ml-1">(Organizer)</span>}
                   </div>
                   {participant.player_skill_level && (
-                    <div className="text-sm text-gray-500 capitalize">{participant.player_skill_level}</div>
+                    <div className="text-xs text-secondary capitalize mt-0.5">{participant.player_skill_level}</div>
                   )}
                 </div>
               </div>
-              <div className="text-sm text-gray-500">
+              <div className="text-xs text-muted">
                 Joined {new Date(participant.joined_at).toLocaleDateString()}
               </div>
             </li>
           ))}
           {!game.participants?.length && (
-            <li className="px-4 py-4 sm:px-6 text-sm text-gray-500 text-center">No participants yet</li>
+            <li className="px-6 py-8 text-sm text-secondary text-center">No participants yet</li>
           )}
         </ul>
-      </div>
+      </PsCard>
     </div>
   );
 }

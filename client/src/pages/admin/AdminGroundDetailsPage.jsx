@@ -1,7 +1,17 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { api } from '../../lib/api';
-import Spinner from '../../components/Spinner';
+import {
+  PsButton,
+  PsCard,
+  PsInput,
+  PsSelect,
+  PsBadge,
+  PsAlert,
+  PsPageHeader,
+  PsLoading,
+  PsBackButton
+} from '../../components/ui';
 
 export default function AdminGroundDetailsPage() {
   const { groundId } = useParams();
@@ -109,154 +119,185 @@ export default function AdminGroundDetailsPage() {
     }
   };
 
-  if (loading) return <div className="flex justify-center py-12"><Spinner /></div>;
-  if (error) return <div className="rounded-md bg-red-50 p-4 text-red-700">{error}</div>;
-  if (!ground) return <div className="text-gray-500 py-12 text-center">Ground not found.</div>;
+  if (loading) return <PsLoading />;
+  if (error && !ground) {
+    return (
+      <div className="space-y-4">
+        <PsBackButton to="/admin/grounds" label="Back to Grounds" />
+        <PsAlert variant="error">{error}</PsAlert>
+      </div>
+    );
+  }
+  
+  if (!ground) return null;
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold text-gray-900">Manage: {ground.name}</h1>
-        <button onClick={() => navigate('/admin/grounds')} className="text-sm font-medium text-indigo-600">
-          &larr; Back to Grounds
-        </button>
-      </div>
+    <div className="space-y-6 pb-12">
+      <PsBackButton to="/admin/grounds" label="Back to Grounds" />
+      <PsPageHeader title={`Manage: ${ground.name}`} />
 
-      <div className="bg-white shadow sm:rounded-lg px-4 py-5 sm:p-6">
-        <div className="flex justify-between items-start">
+      {error && <PsAlert variant="error">{error}</PsAlert>}
+
+      <PsCard className="p-6 border-l-4 border-l-gold">
+        <div className="flex flex-col sm:flex-row justify-between items-start gap-4">
           <div>
-            <h3 className="text-lg font-medium text-gray-900">Details</h3>
-            <p className="mt-1 text-sm text-gray-500">{ground.address}, {ground.city}</p>
+            <h3 className="text-xl font-serif font-bold text-primary">Details</h3>
+            <p className="mt-1 text-sm text-secondary">{ground.address}, {ground.city}</p>
           </div>
           <div className="flex gap-2">
-            <button
+            <PsButton
+              variant={ground.is_active ? 'warning' : 'primary'}
               onClick={handleToggleStatus}
-              className={`px-3 py-1 rounded text-sm font-medium ${ground.is_active ? 'bg-amber-100 text-amber-700 hover:bg-amber-200' : 'bg-green-100 text-green-700 hover:bg-green-200'}`}
             >
               {ground.is_active ? 'Deactivate' : 'Activate'}
-            </button>
-            <button
+            </PsButton>
+            <PsButton
+              variant="danger"
               onClick={handleDeleteGround}
-              className="px-3 py-1 rounded text-sm font-medium bg-red-100 text-red-700 hover:bg-red-200"
             >
               Delete
-            </button>
+            </PsButton>
           </div>
         </div>
-      </div>
+      </PsCard>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         {/* Sports Management */}
-        <div className="bg-white shadow sm:rounded-lg px-4 py-5 sm:p-6">
-          <h3 className="text-lg font-medium text-gray-900 mb-4">Supported Sports</h3>
-          <ul className="divide-y divide-gray-200 mb-4 border-t border-b">
+        <PsCard className="p-6">
+          <h3 className="text-lg font-serif font-bold text-primary mb-4">Supported Sports</h3>
+          <ul className="divide-y divide-border mb-4 border-t border-b border-border">
             {ground.sports?.map(sport => (
               <li key={sport.id} className="py-3 flex justify-between items-center">
-                <span className="text-sm font-medium">{sport.name}</span>
-                <button onClick={() => handleRemoveSport(sport.id)} className="text-red-600 hover:text-red-800 text-sm">Remove</button>
+                <span className="text-sm font-medium text-primary">{sport.name}</span>
+                <button onClick={() => handleRemoveSport(sport.id)} className="text-error hover:text-error/80 text-sm font-medium">Remove</button>
               </li>
             ))}
             {(!ground.sports || ground.sports.length === 0) && (
-              <li className="py-3 text-sm text-gray-500">No sports configured.</li>
+              <li className="py-4 text-sm text-secondary italic text-center">No sports configured.</li>
             )}
           </ul>
           
-          <form onSubmit={handleAddSport} className="flex gap-2">
-            <select
-              value={selectedSportId}
-              onChange={(e) => setSelectedSportId(e.target.value)}
-              className="block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
-            >
-              <option value="">Select a sport...</option>
-              {allSports
-                .filter(s => !ground.sports?.find(gs => gs.id === s.id))
-                .map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
-            </select>
-            <button type="submit" className="rounded-md bg-indigo-600 px-3 py-2 text-sm font-semibold text-white hover:bg-indigo-500">
-              Add
-            </button>
+          <form onSubmit={handleAddSport} className="flex gap-2 items-end">
+            <div className="flex-1">
+              <PsSelect
+                label="Add Sport"
+                value={selectedSportId}
+                onChange={(e) => setSelectedSportId(e.target.value)}
+              >
+                <option value="">Select a sport...</option>
+                {allSports
+                  .filter(s => !ground.sports?.find(gs => gs.id === s.id))
+                  .map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
+              </PsSelect>
+            </div>
+            <PsButton type="submit">Add</PsButton>
           </form>
-          {sportError && <p className="mt-2 text-sm text-red-600">{sportError}</p>}
-        </div>
+          {sportError && <PsAlert variant="error" className="mt-4">{sportError}</PsAlert>}
+        </PsCard>
 
         {/* Slot Management */}
-        <div className="bg-white shadow sm:rounded-lg px-4 py-5 sm:p-6">
-          <h3 className="text-lg font-medium text-gray-900 mb-4">Add Booking Slot</h3>
+        <PsCard className="p-6">
+          <h3 className="text-lg font-serif font-bold text-primary mb-4">Add Booking Slot</h3>
           <form onSubmit={handleAddSlot} className="space-y-4">
             <div className="grid grid-cols-2 gap-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700">Date</label>
-                <input required type="date" value={slotData.slot_date} onChange={(e) => setSlotData({...slotData, slot_date: e.target.value})} className="mt-1 block w-full rounded-md border-gray-300 shadow-sm sm:text-sm" />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700">Sport (Optional)</label>
-                <select value={slotData.sport_id} onChange={(e) => setSlotData({...slotData, sport_id: e.target.value})} className="mt-1 block w-full rounded-md border-gray-300 shadow-sm sm:text-sm">
-                  <option value="">General (Any)</option>
-                  {ground.sports?.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
-                </select>
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700">Start Time</label>
-                <input required type="time" value={slotData.start_time} onChange={(e) => setSlotData({...slotData, start_time: e.target.value})} className="mt-1 block w-full rounded-md border-gray-300 shadow-sm sm:text-sm" />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700">End Time</label>
-                <input required type="time" value={slotData.end_time} onChange={(e) => setSlotData({...slotData, end_time: e.target.value})} className="mt-1 block w-full rounded-md border-gray-300 shadow-sm sm:text-sm" />
-              </div>
+              <PsInput 
+                label="Date" 
+                required 
+                type="date" 
+                value={slotData.slot_date} 
+                onChange={(e) => setSlotData({...slotData, slot_date: e.target.value})} 
+              />
+              <PsSelect 
+                label="Sport (Optional)" 
+                value={slotData.sport_id} 
+                onChange={(e) => setSlotData({...slotData, sport_id: e.target.value})}
+              >
+                <option value="">General (Any)</option>
+                {ground.sports?.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
+              </PsSelect>
+              <PsInput 
+                label="Start Time" 
+                required 
+                type="time" 
+                value={slotData.start_time} 
+                onChange={(e) => setSlotData({...slotData, start_time: e.target.value})} 
+              />
+              <PsInput 
+                label="End Time" 
+                required 
+                type="time" 
+                value={slotData.end_time} 
+                onChange={(e) => setSlotData({...slotData, end_time: e.target.value})} 
+              />
               <div className="col-span-2">
-                <label className="block text-sm font-medium text-gray-700">Price (₹)</label>
-                <input required type="number" min="0" step="0.01" value={slotData.price} onChange={(e) => setSlotData({...slotData, price: e.target.value})} className="mt-1 block w-full rounded-md border-gray-300 shadow-sm sm:text-sm" />
+                <PsInput 
+                  label="Price (₹)" 
+                  required 
+                  type="number" 
+                  min="0" 
+                  step="0.01" 
+                  value={slotData.price} 
+                  onChange={(e) => setSlotData({...slotData, price: e.target.value})} 
+                />
               </div>
             </div>
-            {slotError && <p className="text-sm text-red-600">{slotError}</p>}
-            <button type="submit" className="w-full rounded-md bg-indigo-600 px-3 py-2 text-sm font-semibold text-white hover:bg-indigo-500">
-              Create Slot
-            </button>
+            {slotError && <PsAlert variant="error">{slotError}</PsAlert>}
+            <div className="pt-2">
+              <PsButton type="submit" className="w-full">
+                Create Slot
+              </PsButton>
+            </div>
           </form>
-        </div>
+        </PsCard>
       </div>
 
-      <div className="bg-white shadow sm:rounded-lg px-4 py-5 sm:p-6">
-        <h3 className="text-lg font-medium text-gray-900 mb-4">Existing Slots</h3>
+      <PsCard>
+        <div className="px-6 py-4 border-b border-border bg-pill-hover rounded-t-2xl">
+          <h3 className="text-lg font-serif font-bold text-primary">Existing Slots</h3>
+        </div>
         <div className="overflow-x-auto">
-          <table className="min-w-full divide-y divide-gray-300">
+          <table className="min-w-full divide-y divide-border">
             <thead>
-              <tr>
-                <th className="px-3 py-3 text-left text-sm font-semibold text-gray-900">Date</th>
-                <th className="px-3 py-3 text-left text-sm font-semibold text-gray-900">Time</th>
-                <th className="px-3 py-3 text-left text-sm font-semibold text-gray-900">Price</th>
-                <th className="px-3 py-3 text-left text-sm font-semibold text-gray-900">Status</th>
-                <th className="px-3 py-3 text-right text-sm font-semibold text-gray-900">Actions</th>
+              <tr className="bg-surface">
+                <th className="px-6 py-3 text-left text-xs font-semibold text-secondary uppercase tracking-wider">Date</th>
+                <th className="px-6 py-3 text-left text-xs font-semibold text-secondary uppercase tracking-wider">Time</th>
+                <th className="px-6 py-3 text-left text-xs font-semibold text-secondary uppercase tracking-wider">Price</th>
+                <th className="px-6 py-3 text-left text-xs font-semibold text-secondary uppercase tracking-wider">Status</th>
+                <th className="px-6 py-3 text-right text-xs font-semibold text-secondary uppercase tracking-wider">Actions</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-gray-200">
+            <tbody className="divide-y divide-border bg-surface">
               {slots.map(slot => {
                 let dStr = slot.slot_date;
                 if (dStr.includes('T')) dStr = dStr.split('T')[0];
                 
                 return (
-                  <tr key={slot.id}>
-                    <td className="whitespace-nowrap px-3 py-4 text-sm text-gray-500">{new Date(dStr).toLocaleDateString()}</td>
-                    <td className="whitespace-nowrap px-3 py-4 text-sm text-gray-500">{slot.start_time.slice(0,5)} - {slot.end_time.slice(0,5)}</td>
-                    <td className="whitespace-nowrap px-3 py-4 text-sm text-gray-500">₹{slot.price}</td>
-                    <td className="whitespace-nowrap px-3 py-4 text-sm">
-                      <span className={`inline-flex items-center rounded-full px-2 py-1 text-xs font-medium ${slot.is_available ? 'bg-green-50 text-green-700' : 'bg-gray-100 text-gray-700'}`}>
+                  <tr key={slot.id} className="hover:bg-pill-hover transition">
+                    <td className="whitespace-nowrap px-6 py-4 text-sm text-primary font-medium">{new Date(dStr).toLocaleDateString()}</td>
+                    <td className="whitespace-nowrap px-6 py-4 text-sm text-secondary">{slot.start_time.slice(0,5)} - {slot.end_time.slice(0,5)}</td>
+                    <td className="whitespace-nowrap px-6 py-4 text-sm text-primary font-bold">₹{slot.price}</td>
+                    <td className="whitespace-nowrap px-6 py-4 text-sm">
+                      <PsBadge variant={slot.is_available ? 'success' : 'default'}>
                         {slot.is_available ? 'Available' : 'Booked'}
-                      </span>
+                      </PsBadge>
                     </td>
-                    <td className="relative whitespace-nowrap py-4 pl-3 pr-4 text-right text-sm font-medium sm:pr-0">
-                      <button onClick={() => handleDeleteSlot(slot.id)} className="text-red-600 hover:text-red-900">Delete</button>
+                    <td className="whitespace-nowrap py-4 pl-3 pr-6 text-right text-sm font-medium">
+                      <button onClick={() => handleDeleteSlot(slot.id)} className="text-error hover:text-error/80 transition font-bold">Delete</button>
                     </td>
                   </tr>
                 );
               })}
               {slots.length === 0 && (
-                <tr><td colSpan="5" className="py-4 text-center text-sm text-gray-500">No slots configured.</td></tr>
+                <tr>
+                  <td colSpan="5" className="px-6 py-12 text-center text-sm text-secondary italic">
+                    No slots configured for this ground yet.
+                  </td>
+                </tr>
               )}
             </tbody>
           </table>
         </div>
-      </div>
+      </PsCard>
     </div>
   );
 }

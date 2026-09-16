@@ -1,9 +1,14 @@
 import React, { useState, useEffect } from 'react';
 import { api } from '../../lib/api';
 import { useAuth } from '../../store/AuthContext';
-import Spinner from '../../components/Spinner';
-import ErrorMessage from '../../components/ErrorMessage';
-import EmptyState from '../../components/EmptyState';
+import {
+  PsButton,
+  PsCard,
+  PsAlert,
+  PsPageHeader,
+  PsLoading,
+  PsEmpty
+} from '../../components/ui';
 import CreatePostForm from './CreatePostForm';
 import PostItem from './PostItem';
 
@@ -36,7 +41,6 @@ export default function CommunityPage() {
 
   const checkMembership = async () => {
     try {
-      // The server caps limit at 100. Paginate if total > 100.
       let page = 1;
       let found = false;
       let keepGoing = true;
@@ -101,50 +105,49 @@ export default function CommunityPage() {
     }
   };
 
-  if (loading) return <div className="py-12"><Spinner /></div>;
-  if (error) return <div className="py-12"><ErrorMessage message={error} /></div>;
+  if (loading) return <PsLoading />;
+  if (error) return <PsAlert variant="error">{error}</PsAlert>;
   if (!community) return null;
 
   return (
-    <div className="max-w-4xl mx-auto space-y-6">
-      <div className="bg-white shadow sm:rounded-lg overflow-hidden">
-        <div className="px-4 py-5 sm:px-6 flex justify-between items-center bg-indigo-600 text-white">
-          <div>
-            <h2 className="text-xl font-bold">{community.name}</h2>
-            <p className="mt-1 max-w-2xl text-sm opacity-90">{community.description}</p>
+    <div className="max-w-4xl mx-auto space-y-6 pb-12">
+      <PsCard className="bg-maroon overflow-hidden border-none text-surface">
+        <div className="px-6 py-8 flex flex-col sm:flex-row justify-between items-center gap-6 relative">
+          <div className="absolute top-0 left-0 w-full h-full opacity-10 pointer-events-none" style={{ backgroundImage: 'radial-gradient(circle at 100% 100%, #ffffff 0%, transparent 50%)' }}></div>
+          <div className="relative z-10 text-center sm:text-left">
+            <h2 className="text-3xl font-serif font-bold text-surface">{community.name}</h2>
+            <p className="mt-2 text-surface/80">{community.description}</p>
           </div>
-          <button
-            onClick={handleJoinLeave}
-            disabled={membershipLoading}
-            className={`px-4 py-2 rounded-md text-sm font-medium shadow-sm transition-colors ${
-              isMember
-                ? 'bg-white text-indigo-700 hover:bg-gray-100'
-                : 'bg-indigo-500 text-white hover:bg-indigo-400 border border-indigo-400'
-            }`}
-          >
-            {membershipLoading ? '...' : isMember ? 'Leave Community' : 'Join Community'}
-          </button>
+          <div className="relative z-10">
+            <PsButton
+              onClick={handleJoinLeave}
+              disabled={membershipLoading}
+              className={isMember ? 'bg-surface text-maroon hover:bg-pill' : 'bg-gold hover:bg-gold/90 text-surface'}
+            >
+              {membershipLoading ? '...' : isMember ? 'Leave Community' : 'Join Community'}
+            </PsButton>
+          </div>
         </div>
-      </div>
+      </PsCard>
 
-      <div className="border-b border-gray-200">
+      <div className="border-b border-border">
         <nav className="-mb-px flex space-x-8" aria-label="Tabs">
           <button
             onClick={() => setActiveTab('posts')}
-            className={`whitespace-nowrap border-b-2 py-4 px-1 text-sm font-medium ${
+            className={`whitespace-nowrap border-b-2 py-4 px-1 text-sm font-medium transition ${
               activeTab === 'posts'
-                ? 'border-indigo-500 text-indigo-600'
-                : 'border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700'
+                ? 'border-maroon text-maroon font-bold'
+                : 'border-transparent text-secondary hover:border-border hover:text-primary'
             }`}
           >
             General Posts
           </button>
           <button
             onClick={() => setActiveTab('equipment')}
-            className={`whitespace-nowrap border-b-2 py-4 px-1 text-sm font-medium ${
+            className={`whitespace-nowrap border-b-2 py-4 px-1 text-sm font-medium transition ${
               activeTab === 'equipment'
-                ? 'border-indigo-500 text-indigo-600'
-                : 'border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700'
+                ? 'border-maroon text-maroon font-bold'
+                : 'border-transparent text-secondary hover:border-border hover:text-primary'
             }`}
           >
             Equipment Requests
@@ -159,13 +162,13 @@ export default function CommunityPage() {
             onCreated={fetchPosts}
           />
         ) : (
-          <div className="bg-gray-50 rounded-lg p-4 text-center text-sm text-gray-500 border border-gray-200 mb-6">
+          <PsAlert variant="info" className="mb-6">
             You must join the community to post and comment.
-          </div>
+          </PsAlert>
         )}
 
         {postsLoading ? (
-          <div className="py-8"><Spinner /></div>
+          <PsLoading />
         ) : posts.length > 0 ? (
           <div className="space-y-4">
             {posts.map(post => (
@@ -179,9 +182,9 @@ export default function CommunityPage() {
             ))}
           </div>
         ) : (
-          <EmptyState
+          <PsEmpty
             title={activeTab === 'equipment' ? 'No equipment requests' : 'No posts yet'}
-            description="Be the first to share something with the community!"
+            message="Be the first to share something with the community!"
           />
         )}
       </div>

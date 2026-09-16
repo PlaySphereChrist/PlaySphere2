@@ -1,8 +1,15 @@
 import { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { api } from '../../lib/api';
-import ErrorMessage from '../../components/ErrorMessage';
-import Spinner from '../../components/Spinner';
+import {
+  PsCard,
+  PsBadge,
+  PsAlert,
+  PsPageHeader,
+  PsLoading,
+  PsEmpty,
+  PsBackButton
+} from '../../components/ui';
 
 export default function TournamentMatchesPage() {
   const { tournamentId } = useParams();
@@ -33,53 +40,67 @@ export default function TournamentMatchesPage() {
     }
   };
 
-  if (loading) return <div className="py-12"><Spinner size="lg" /></div>;
-  if (error) return <ErrorMessage message={error} />;
+  if (loading) return <PsLoading />;
+  
+  if (error && !tournament) {
+    return (
+      <div className="space-y-4">
+        <PsBackButton to={`/tournaments/${tournamentId}`} label="Back to Tournament" />
+        <PsAlert variant="error">{error}</PsAlert>
+      </div>
+    );
+  }
+
   if (!tournament) return null;
 
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-6">
-      <Link to={`/tournaments/${tournamentId}`} className="text-sm font-medium text-indigo-600 hover:text-indigo-500">
-        &larr; Back to {tournament.name}
-      </Link>
+    <div className="max-w-4xl mx-auto space-y-6">
+      <PsBackButton to={`/tournaments/${tournamentId}`} label={`Back to ${tournament.name}`} />
 
-      <div>
-        <h1 className="text-2xl font-bold text-gray-900">Matches</h1>
-        <p className="text-sm text-gray-500">All matches for {tournament.name}</p>
-      </div>
+      <PsPageHeader 
+        title="Matches" 
+        subtitle={`All matches for ${tournament.name}`}
+      />
 
-      <div className="bg-white shadow overflow-hidden sm:rounded-md">
+      {error && <PsAlert variant="error">{error}</PsAlert>}
+
+      <PsCard>
         {matches.length === 0 ? (
-          <div className="p-6 text-center text-gray-500">No matches scheduled yet.</div>
+          <div className="py-8">
+            <PsEmpty title="No matches" message="No matches are scheduled yet." />
+          </div>
         ) : (
-          <ul className="divide-y divide-gray-200">
+          <ul className="divide-y divide-border">
             {matches.map((match) => (
               <li key={match.id}>
-                <Link to={`/tournaments/${tournamentId}/matches/${match.id}`} className="block hover:bg-gray-50">
-                  <div className="px-4 py-4 sm:px-6">
+                <Link to={`/tournaments/${tournamentId}/matches/${match.id}`} className="block hover:bg-pill-hover transition">
+                  <div className="px-6 py-5">
                     <div className="flex items-center justify-between">
-                      <p className="text-sm font-medium text-indigo-600 truncate">
+                      <p className="text-base font-semibold text-primary truncate">
                         {match.round_name || `Round ${match.round_number}`} - Match {match.match_number}
                       </p>
                       <div className="ml-2 flex-shrink-0 flex">
-                        <p className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full 
-                          ${match.status === 'completed' ? 'bg-green-100 text-green-800' : 
-                            match.status === 'in_progress' ? 'bg-red-100 text-red-800' : 
-                            match.status === 'cancelled' ? 'bg-gray-100 text-gray-800' : 'bg-blue-100 text-blue-800'}`}>
+                        <PsBadge variant={
+                          match.status === 'completed' ? 'success' : 
+                          match.status === 'in_progress' ? 'maroon' : 
+                          match.status === 'cancelled' ? 'default' : 'warning'
+                        }>
                           {match.status.replace('_', ' ').toUpperCase()}
-                        </p>
+                        </PsBadge>
                       </div>
                     </div>
-                    <div className="mt-2 sm:flex sm:justify-between">
+                    
+                    <div className="mt-3 sm:flex sm:justify-between items-end">
                       <div className="sm:flex">
-                        <p className="flex items-center text-sm text-gray-500">
-                          Teams: {match.participants?.map(p => p.team_name || p.registration_name).join(' vs ') || 'TBD'}
+                        <p className="flex items-center text-sm font-medium text-primary bg-surface border border-border px-3 py-1.5 rounded-lg shadow-sm">
+                          {match.participants?.map(p => p.team_name || p.registration_name).join(' vs ') || 'TBD'}
                         </p>
                       </div>
-                      <div className="mt-2 flex items-center text-sm text-gray-500 sm:mt-0">
+                      <div className="mt-2 flex items-center text-sm text-secondary sm:mt-0">
                         {match.scheduled_at && (
-                          <p>
-                            Scheduled: {new Date(match.scheduled_at).toLocaleString()}
+                          <p className="flex items-center gap-1.5">
+                            <span className="text-muted">🕒</span>
+                            {new Date(match.scheduled_at).toLocaleString([], { dateStyle: 'medium', timeStyle: 'short' })}
                           </p>
                         )}
                       </div>
@@ -90,8 +111,7 @@ export default function TournamentMatchesPage() {
             ))}
           </ul>
         )}
-      </div>
+      </PsCard>
     </div>
   );
 }
-

@@ -1,7 +1,18 @@
 import { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { api } from '../lib/api';
-import Spinner from '../components/Spinner';
+import {
+  PsButton,
+  PsCard,
+  PsInput,
+  PsTextarea,
+  PsSelect,
+  PsBadge,
+  PsAlert,
+  PsPageHeader,
+  PsLoading,
+  PsEmpty,
+} from '../components/ui';
 
 export default function TeamsPage() {
   const [teams, setTeams] = useState([]);
@@ -81,167 +92,122 @@ export default function TeamsPage() {
     }
   };
 
-  if (loading) {
-    return (
-      <div className="flex justify-center items-center py-12">
-        <Spinner size="lg" />
-      </div>
-    );
-  }
+  if (loading) return <PsLoading />;
 
   return (
     <div className="space-y-6">
-      
-      {/* HEADER */}
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center space-y-4 sm:space-y-0">
-        <h1 className="text-2xl font-bold text-gray-900">Teams</h1>
-        <button
-          onClick={() => setShowCreate(!showCreate)}
-          className="inline-flex justify-center rounded-md bg-indigo-600 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-indigo-500"
-        >
-          {showCreate ? 'Cancel' : '+ Create Team'}
-        </button>
-      </div>
+      <PsPageHeader 
+        title="Teams" 
+        actions={
+          <PsButton 
+            variant={showCreate ? "secondary" : "primary"} 
+            onClick={() => setShowCreate(!showCreate)}
+          >
+            {showCreate ? 'Cancel' : '+ Create Team'}
+          </PsButton>
+        }
+      />
 
-      {error && (
-        <div className="rounded-md bg-red-50 p-4">
-          <div className="text-sm text-red-700">{error}</div>
-        </div>
-      )}
+      {error && <PsAlert variant="error">{error}</PsAlert>}
 
       {/* CREATE FORM */}
       {showCreate && (
-        <div className="bg-white shadow sm:rounded-lg px-4 py-5 sm:p-6 border border-gray-200">
-          <h2 className="text-lg font-medium leading-6 text-gray-900 mb-4">Create a New Team</h2>
-          {createError && (
-            <div className="rounded-md bg-red-50 p-4 mb-4">
-              <div className="text-sm text-red-700">{createError}</div>
-            </div>
-          )}
+        <PsCard className="p-6 border-maroon/20 bg-maroon/5">
+          <h2 className="text-lg font-serif font-semibold text-primary mb-4">Create a New Team</h2>
+          {createError && <PsAlert variant="error" className="mb-4">{createError}</PsAlert>}
           <form onSubmit={handleCreateTeam} className="space-y-4">
-            <div className="grid grid-cols-1 gap-y-6 gap-x-4 sm:grid-cols-2">
-              <div>
-                <label className="block text-sm font-medium text-gray-700">Team Name *</label>
-                <input
-                  type="text"
-                  required
-                  value={formData.name}
-                  onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                  className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700">Sport *</label>
-                <select
-                  required
-                  value={formData.sport_id}
-                  onChange={(e) => setFormData({ ...formData, sport_id: e.target.value })}
-                  className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
-                >
-                  <option value="">Select a sport...</option>
-                  {sports.map(s => (
-                    <option key={s.id} value={s.id}>{s.name}</option>
-                  ))}
-                </select>
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700">City</label>
-                <input
-                  type="text"
-                  value={formData.city}
-                  onChange={(e) => setFormData({ ...formData, city: e.target.value })}
-                  className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
-                />
-              </div>
-              
-              <div className="sm:col-span-2">
-                <label className="block text-sm font-medium text-gray-700">Description</label>
-                <textarea
-                  rows={2}
-                  value={formData.description}
-                  onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                  className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
-                />
-              </div>
-            </div>
-
-            <div className="flex justify-end pt-4">
-              <button
-                type="submit"
-                disabled={createLoading}
-                className="inline-flex justify-center rounded-md bg-indigo-600 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-indigo-500 disabled:opacity-50"
+            <div className="grid grid-cols-1 gap-y-4 gap-x-4 sm:grid-cols-2">
+              <PsInput
+                label="Team Name *"
+                required
+                value={formData.name}
+                onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+              />
+              <PsSelect
+                label="Sport *"
+                required
+                value={formData.sport_id}
+                onChange={(e) => setFormData({ ...formData, sport_id: e.target.value })}
               >
+                <option value="">Select a sport...</option>
+                {sports.map(s => (
+                  <option key={s.id} value={s.id}>{s.name}</option>
+                ))}
+              </PsSelect>
+              <PsInput
+                label="City"
+                value={formData.city}
+                onChange={(e) => setFormData({ ...formData, city: e.target.value })}
+              />
+            </div>
+            <PsTextarea
+              label="Description"
+              value={formData.description}
+              onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+            />
+            <div className="flex justify-end pt-2">
+              <PsButton type="submit" disabled={createLoading}>
                 {createLoading ? 'Creating...' : 'Create Team'}
-              </button>
+              </PsButton>
             </div>
           </form>
-        </div>
+        </PsCard>
       )}
 
-      {/* INVITATIONS */}
+      {/* PENDING INVITATIONS */}
       {invitations.length > 0 && (
-        <div>
-          <h2 className="text-lg font-medium leading-6 text-gray-900 mb-3">Pending Invitations</h2>
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        <div className="space-y-3">
+          <h2 className="text-lg font-serif font-semibold text-primary">Pending Invitations</h2>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
             {invitations.map(inv => (
-              <div key={inv.id} className="bg-white shadow sm:rounded-lg px-4 py-4 border-l-4 border-yellow-400 flex flex-col justify-between">
+              <PsCard key={inv.id} className="p-4 flex flex-col justify-between gap-4 border-gold/40 bg-gold/5">
                 <div>
-                  <h3 className="font-semibold text-gray-900">{inv.team_name}</h3>
-                  {inv.message && <p className="text-sm text-gray-500 italic mt-1">&quot;{inv.message}&quot;</p>}
-                  <p className="text-xs text-gray-400 mt-2">Invited on {new Date(inv.created_at).toLocaleDateString()}</p>
+                  <h3 className="text-sm font-semibold text-primary">{inv.team_name}</h3>
+                  <p className="text-xs text-secondary mt-1">Invited by: {inv.inviter_name}</p>
                 </div>
-                <div className="mt-4 flex space-x-3">
-                  <button
-                    onClick={() => handleRespond(inv.id, 'accept')}
-                    className="flex-1 bg-indigo-50 text-indigo-700 py-1.5 px-3 rounded text-sm font-medium hover:bg-indigo-100"
-                  >
-                    Accept
-                  </button>
-                  <button
-                    onClick={() => handleRespond(inv.id, 'reject')}
-                    className="flex-1 bg-red-50 text-red-700 py-1.5 px-3 rounded text-sm font-medium hover:bg-red-100"
-                  >
-                    Decline
-                  </button>
+                <div className="flex gap-2">
+                  <PsButton size="sm" onClick={() => handleRespond(inv.id, 'accept')}>Accept</PsButton>
+                  <PsButton size="sm" variant="secondary" onClick={() => handleRespond(inv.id, 'decline')}>Decline</PsButton>
                 </div>
-              </div>
+              </PsCard>
             ))}
           </div>
         </div>
       )}
 
-      {/* TEAMS LIST */}
-      <div>
-        <h2 className="text-lg font-medium leading-6 text-gray-900 mb-3">My Teams</h2>
+      {/* MY TEAMS */}
+      <div className="space-y-4">
+        <h2 className="text-lg font-serif font-semibold text-primary">My Teams</h2>
+        
         {teams.length === 0 ? (
-          <div className="text-center rounded-lg border-2 border-dashed border-gray-300 p-12">
-            <h3 className="mt-2 text-sm font-semibold text-gray-900">No teams</h3>
-            <p className="mt-1 text-sm text-gray-500">You haven&apos;t joined or created any teams yet.</p>
-          </div>
+          <PsEmpty 
+            title="No Teams Yet" 
+            message="You are not part of any teams. Create one or ask a manager to invite you." 
+          />
         ) : (
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
             {teams.map(team => (
-              <Link key={team.id} to={`/teams/${team.id}`} className="block">
-                <div className="bg-white shadow sm:rounded-lg hover:shadow-md transition-shadow h-full flex flex-col p-5 border border-gray-200">
+              <PsCard key={team.id} className="hover:border-maroon/50 transition">
+                <Link to={`/teams/${team.id}`} className="block p-5 h-full flex flex-col">
                   <div className="flex justify-between items-start mb-2">
-                    <h3 className="text-lg font-bold text-gray-900 truncate pr-2">{team.name}</h3>
+                    <h3 className="text-base font-semibold text-primary truncate pr-2">{team.name}</h3>
                     {team.is_manager && (
-                      <span className="inline-flex items-center rounded-full bg-indigo-50 px-2 py-1 text-xs font-medium text-indigo-700 ring-1 ring-inset ring-indigo-600/20">
-                        Manager
+                      <PsBadge variant="maroon">Manager</PsBadge>
+                    )}
+                  </div>
+                  <p className="text-sm text-secondary mb-4">{team.sport_name}</p>
+                  <div className="mt-auto flex items-center justify-between text-xs text-secondary">
+                    <span className="flex items-center gap-1">
+                      👥 {team.member_count} members
+                    </span>
+                    {team.city && (
+                      <span className="flex items-center gap-1 text-muted">
+                        📍 {team.city}
                       </span>
                     )}
                   </div>
-                  <div className="text-sm text-gray-500 flex-1">
-                    <p className="mb-1">{team.sport_name}</p>
-                    {team.city && <p className="text-gray-400">{team.city}</p>}
-                    {!team.is_active && (
-                      <span className="inline-block mt-2 text-xs text-red-600 font-medium">Inactive</span>
-                    )}
-                  </div>
-                </div>
-              </Link>
+                </Link>
+              </PsCard>
             ))}
           </div>
         )}

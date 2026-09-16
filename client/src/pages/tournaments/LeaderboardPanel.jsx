@@ -1,18 +1,16 @@
 import { useState, useEffect, useCallback } from 'react';
 import { api } from '../../lib/api';
-import Spinner from '../../components/Spinner';
-import ErrorMessage from '../../components/ErrorMessage';
-import EmptyState from '../../components/EmptyState';
+import {
+  PsButton,
+  PsCard,
+  PsBadge,
+  PsAlert,
+  PsLoading,
+  PsEmpty
+} from '../../components/ui';
 import LeaderboardCreateForm from './LeaderboardCreateForm';
 import LeaderboardEntriesTable from './LeaderboardEntriesTable';
 
-/**
- * LeaderboardPanel — embeds into TournamentDetailsPage.
- * Props:
- *   tournamentId       : string
- *   tournament         : object (full tournament row, includes sport_id, organizer_user_id)
- *   isOrganizerOrAdmin : boolean
- */
 export default function LeaderboardPanel({ tournamentId, tournament, isOrganizerOrAdmin }) {
   const [leaderboards, setLeaderboards] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -28,7 +26,6 @@ export default function LeaderboardPanel({ tournamentId, tournament, isOrganizer
       const res = await api.get(`/leaderboards/tournaments/${tournamentId}`);
       const lbs = res.leaderboards || [];
       setLeaderboards(lbs);
-      // Auto-select first leaderboard if none selected yet
       if (!selectedLbId && lbs.length > 0) {
         setSelectedLbId(lbs[0].id);
       }
@@ -53,27 +50,26 @@ export default function LeaderboardPanel({ tournamentId, tournament, isOrganizer
   const selectedLb = leaderboards.find((lb) => lb.id === selectedLbId) || null;
 
   return (
-    <div className="bg-white shadow sm:rounded-lg overflow-hidden">
+    <PsCard className="overflow-hidden">
       {/* Header */}
-      <div className="px-4 py-5 sm:px-6 border-b border-gray-200 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+      <div className="px-6 py-5 border-b border-border bg-pill-hover flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
         <div>
-          <h4 className="text-lg font-semibold text-gray-900">Leaderboards</h4>
-          <p className="mt-1 text-sm text-gray-500">Tournament rankings derived from official match statistics.</p>
+          <h4 className="text-xl font-serif font-semibold text-primary">Leaderboards</h4>
+          <p className="mt-1 text-sm text-secondary">Tournament rankings derived from official match statistics.</p>
         </div>
         {isOrganizerOrAdmin && (
-          <button
-            type="button"
+          <PsButton
+            variant={showCreateForm ? "secondary" : "primary"}
             onClick={() => setShowCreateForm((v) => !v)}
-            className="inline-flex items-center rounded-md bg-indigo-600 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-indigo-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600 whitespace-nowrap"
           >
             {showCreateForm ? 'Cancel' : '+ New Leaderboard'}
-          </button>
+          </PsButton>
         )}
       </div>
 
       {/* Create form (organizer/admin only) */}
       {showCreateForm && isOrganizerOrAdmin && (
-        <div className="px-4 py-5 sm:px-6 border-b border-gray-200 bg-gray-50">
+        <div className="px-6 py-5 border-b border-border bg-maroon/5">
           <LeaderboardCreateForm
             tournament={tournament}
             onCreated={handleCreated}
@@ -84,43 +80,45 @@ export default function LeaderboardPanel({ tournamentId, tournament, isOrganizer
 
       {/* Leaderboard list / tabs */}
       {loading ? (
-        <div className="py-12"><Spinner size="lg" /></div>
+        <div className="py-12"><PsLoading /></div>
       ) : error ? (
-        <div className="px-4 py-5">
-          <ErrorMessage message={error} />
+        <div className="p-6">
+          <PsAlert variant="error">{error}</PsAlert>
         </div>
       ) : leaderboards.length === 0 ? (
-        <EmptyState
-          title="No leaderboards yet"
-          description={
-            isOrganizerOrAdmin
-              ? 'Create a leaderboard to rank players or teams by a statistic.'
-              : 'The organizer has not set up any leaderboards for this tournament yet.'
-          }
-          className="shadow-none rounded-none"
-        />
+        <div className="p-6">
+          <PsEmpty
+            title="No leaderboards yet"
+            message={
+              isOrganizerOrAdmin
+                ? 'Create a leaderboard to rank players or teams by a statistic.'
+                : 'The organizer has not set up any leaderboards for this tournament yet.'
+            }
+          />
+        </div>
       ) : (
         <>
           {/* Tab strip */}
-          <div className="border-b border-gray-200 overflow-x-auto">
-            <nav className="-mb-px flex space-x-1 px-4 sm:px-6 min-w-max" aria-label="Leaderboard tabs">
+          <div className="border-b border-border overflow-x-auto bg-surface">
+            <nav className="flex px-4 sm:px-6 min-w-max" aria-label="Leaderboard tabs">
               {leaderboards.map((lb) => (
                 <button
                   key={lb.id}
                   type="button"
                   onClick={() => setSelectedLbId(lb.id)}
-                  className={`whitespace-nowrap py-3 px-3 border-b-2 text-sm font-medium transition-colors ${
+                  className={`whitespace-nowrap py-4 px-4 border-b-2 text-sm font-medium transition-colors ${
                     lb.id === selectedLbId
-                      ? 'border-indigo-500 text-indigo-600'
-                      : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                      ? 'border-maroon text-primary'
+                      : 'border-transparent text-secondary hover:text-primary hover:border-border'
                   }`}
                 >
                   {lb.name}
-                  <span className={`ml-1.5 inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${
-                    lb.leaderboard_type === 'team' ? 'bg-blue-100 text-blue-700' : 'bg-green-100 text-green-700'
-                  }`}>
+                  <PsBadge 
+                    variant={lb.leaderboard_type === 'team' ? 'default' : 'success'} 
+                    className="ml-2"
+                  >
                     {lb.leaderboard_type}
-                  </span>
+                  </PsBadge>
                 </button>
               ))}
             </nav>
@@ -136,6 +134,6 @@ export default function LeaderboardPanel({ tournamentId, tournament, isOrganizer
           )}
         </>
       )}
-    </div>
+    </PsCard>
   );
 }

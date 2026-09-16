@@ -1,11 +1,16 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Link } from 'react-router-dom';
 import { api } from '../../../lib/api';
-import Spinner from '../../../components/Spinner';
-import ErrorMessage from '../../../components/ErrorMessage';
-import TournamentStatusBadge from '../../../components/TournamentStatusBadge';
 import { useAuth } from '../../../store/AuthContext';
-import EmptyState from '../../../components/EmptyState';
+import {
+  PsButton,
+  PsCard,
+  PsBadge,
+  PsAlert,
+  PsPageHeader,
+  PsLoading,
+  PsEmpty
+} from '../../../components/ui';
 
 export default function OrganizerTournamentsPage() {
   const [tournaments, setTournaments] = useState([]);
@@ -45,98 +50,112 @@ export default function OrganizerTournamentsPage() {
     }
   };
 
+  const getStatusBadgeVariant = (s) => {
+    switch (s) {
+      case 'registration_open': return 'success';
+      case 'in_progress': return 'maroon';
+      case 'completed': return 'default';
+      case 'cancelled': return 'danger';
+      case 'draft': return 'warning';
+      default: return 'default';
+    }
+  };
+
+  const getStatusLabel = (s) => {
+    return s.split('_').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
+  };
+
   return (
-    <div className="max-w-7xl mx-auto space-y-6">
+    <div className="space-y-6">
       {/* Confirmation dialog */}
       {confirmDelete && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-40">
-          <div className="bg-white rounded-lg shadow-xl p-6 max-w-md w-full mx-4">
-            <h3 className="text-lg font-semibold text-gray-900">Delete Tournament</h3>
-            <p className="mt-2 text-sm text-gray-600">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm px-4">
+          <div className="bg-surface rounded-2xl shadow-xl p-6 max-w-md w-full border border-border">
+            <h3 className="text-xl font-serif font-bold text-primary">Delete Tournament</h3>
+            <p className="mt-2 text-sm text-secondary">
               Are you sure you want to permanently delete <strong>{confirmDelete.name}</strong>?
             </p>
-            <p className="mt-1 text-xs text-amber-700 bg-amber-50 rounded p-2">
+            <div className="mt-3 text-xs text-warning bg-warning/10 border border-warning/30 rounded-xl p-3">
               ⚠️ This action cannot be undone. Only draft tournaments with no registrations or fixtures can be deleted.
-            </p>
-            <div className="mt-4 flex gap-3 justify-end">
-              <button
-                onClick={() => setConfirmDelete(null)}
-                className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50"
-              >
+            </div>
+            <div className="mt-6 flex gap-3 justify-end">
+              <PsButton variant="ghost" onClick={() => setConfirmDelete(null)}>
                 Cancel
-              </button>
-              <button
-                onClick={handleDeleteConfirmed}
-                className="px-4 py-2 text-sm font-medium text-white bg-red-600 border border-transparent rounded-md hover:bg-red-700"
-              >
+              </PsButton>
+              <PsButton variant="danger" onClick={handleDeleteConfirmed}>
                 Delete Permanently
-              </button>
+              </PsButton>
             </div>
           </div>
         </div>
       )}
 
-      <div className="flex justify-between items-center">
-        <h1 className="text-2xl font-semibold text-gray-900">Manage Tournaments</h1>
-        <Link
-          to="/organizer/tournaments/new"
-          className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-indigo-600 hover:bg-indigo-700"
-        >
-          Create Tournament
-        </Link>
-      </div>
+      <PsPageHeader 
+        title="Manage Tournaments" 
+        actions={
+          <Link to="/organizer/tournaments/new">
+            <PsButton>Create Tournament</PsButton>
+          </Link>
+        }
+      />
 
-      <ErrorMessage message={error} />
+      {error && <PsAlert variant="error">{error}</PsAlert>}
 
       {loading ? (
-        <div className="py-12"><Spinner /></div>
+        <PsLoading />
       ) : tournaments.length === 0 ? (
-        <EmptyState
+        <PsEmpty
           title="No tournaments"
-          description="You haven't created any tournaments yet."
-          actionText="Create Tournament"
-          actionLink="/organizer/tournaments/new"
+          message="You haven't created any tournaments yet."
+          action={
+            <Link to="/organizer/tournaments/new">
+              <PsButton>Create Tournament</PsButton>
+            </Link>
+          }
         />
       ) : (
-        <div className="bg-white shadow overflow-hidden sm:rounded-md">
-          <ul role="list" className="divide-y divide-gray-200">
-            {tournaments.map(tournament => (
-              <li key={tournament.id}>
-                <div className="flex items-center px-4 py-4 sm:px-6 hover:bg-gray-50">
-                  <Link to={`/organizer/tournaments/${tournament.id}/manage`} className="flex-1 min-w-0">
-                    <div className="flex items-center justify-between">
-                      <p className="text-sm font-medium text-indigo-600 truncate">{tournament.name}</p>
-                      <div className="ml-2 flex flex-shrink-0">
-                        <TournamentStatusBadge status={tournament.status} />
-                      </div>
-                    </div>
-                    <div className="mt-2 sm:flex sm:justify-between">
-                      <div className="sm:flex">
-                        <p className="flex items-center text-sm text-gray-500">
-                          {tournament.sport_name} • {tournament.format.replace(/_/g, ' ')}
-                        </p>
-                      </div>
-                      <div className="mt-2 flex items-center text-sm text-gray-500 sm:mt-0">
-                        <p>Created {new Date(tournament.created_at).toLocaleDateString()}</p>
-                      </div>
-                    </div>
-                  </Link>
+        <div className="space-y-4">
+          {tournaments.map(tournament => (
+            <PsCard key={tournament.id} className="hover:border-maroon/50 transition overflow-hidden">
+              <div className="flex flex-col sm:flex-row">
+                <Link to={`/organizer/tournaments/${tournament.id}/manage`} className="flex-1 px-6 py-5 hover:bg-pill-hover transition">
+                  <div className="flex items-start justify-between gap-4">
+                    <h3 className="text-lg font-serif font-bold text-primary hover:text-maroon transition line-clamp-1">
+                      {tournament.name}
+                    </h3>
+                    <PsBadge variant={getStatusBadgeVariant(tournament.status)} className="shrink-0">
+                      {getStatusLabel(tournament.status)}
+                    </PsBadge>
+                  </div>
+                  <div className="mt-2 flex flex-col sm:flex-row sm:justify-between sm:items-center gap-2">
+                    <p className="flex items-center gap-1.5 text-sm text-secondary">
+                      <span className="text-muted">🏆</span>
+                      {tournament.sport_name} • {tournament.format.replace(/_/g, ' ')}
+                    </p>
+                    <p className="flex items-center gap-1.5 text-xs text-muted">
+                      <span className="text-muted">📅</span>
+                      Created {new Date(tournament.created_at).toLocaleDateString()}
+                    </p>
+                  </div>
+                </Link>
 
-                  {/* Delete action — only shown for draft tournaments */}
-                  {tournament.status === 'draft' && (
-                    <button
+                {/* Delete action — only shown for draft tournaments */}
+                {tournament.status === 'draft' && (
+                  <div className="px-6 pb-4 sm:p-5 sm:border-l border-t sm:border-t-0 border-border bg-pill flex items-center justify-end sm:justify-center">
+                    <PsButton
+                      variant="danger"
+                      size="sm"
                       onClick={() => setConfirmDelete(tournament)}
                       disabled={deletingId === tournament.id}
-                      className="ml-4 shrink-0 px-3 py-1.5 text-xs font-medium text-red-600 border border-red-200 rounded-md hover:bg-red-50 disabled:opacity-50"
-                      title="Delete draft tournament"
+                      className="bg-transparent text-error hover:bg-error/10 border border-error/50"
                     >
                       {deletingId === tournament.id ? 'Deleting…' : 'Delete'}
-                    </button>
-                  )}
-                </div>
-              </li>
-            ))}
-          </ul>
+                    </PsButton>
+                  </div>
+                )}
+              </div>
+            </PsCard>
+          ))}
         </div>
       )}
     </div>

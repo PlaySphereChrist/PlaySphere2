@@ -1,16 +1,13 @@
 import { useState, useEffect, useCallback } from 'react';
 import { api } from '../../lib/api';
-import Spinner from '../../components/Spinner';
-import ErrorMessage from '../../components/ErrorMessage';
-import EmptyState from '../../components/EmptyState';
+import {
+  PsButton,
+  PsBadge,
+  PsAlert,
+  PsLoading,
+  PsEmpty
+} from '../../components/ui';
 
-/**
- * LeaderboardEntriesTable — shows entries for a single leaderboard.
- * Props:
- *   leaderboard        : leaderboard object {id, name, leaderboard_type, stat_key, computed_at}
- *   isOrganizerOrAdmin : boolean
- *   onGenerated        : callback() — refresh parent leaderboard list after generate
- */
 export default function LeaderboardEntriesTable({ leaderboard, isOrganizerOrAdmin, onGenerated }) {
   const [entries, setEntries] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -59,87 +56,87 @@ export default function LeaderboardEntriesTable({ leaderboard, isOrganizerOrAdmi
   const isPlayer = leaderboard.leaderboard_type === 'player';
 
   const getRankBadgeClass = (rank) => {
-    if (rank === 1) return 'bg-yellow-100 text-yellow-800 ring-yellow-300';
-    if (rank === 2) return 'bg-gray-100 text-gray-700 ring-gray-300';
-    if (rank === 3) return 'bg-orange-100 text-orange-700 ring-orange-300';
-    return 'bg-white text-gray-600 ring-gray-200';
+    if (rank === 1) return 'bg-gold/20 text-gold border border-gold/40';
+    if (rank === 2) return 'bg-muted/20 text-secondary border border-border';
+    if (rank === 3) return 'bg-[#CD7F32]/20 text-[#CD7F32] border border-[#CD7F32]/40'; // bronze
+    return 'bg-surface text-secondary border border-border';
   };
 
   return (
-    <div className="px-4 py-4 sm:px-6 space-y-4">
-      {/* Leaderboard metadata + generate button */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+    <div className="p-6 space-y-4">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 border-b border-border pb-4">
         <div>
-          <p className="text-sm text-gray-500">
-            Statistic: <span className="font-medium text-gray-900">{leaderboard.stat_key}</span>
+          <p className="text-sm text-secondary">
+            Statistic: <span className="font-medium text-primary">{leaderboard.stat_key}</span>
             {leaderboard.computed_at && (
-              <span className="ml-3 text-xs text-gray-400">
+              <span className="ml-3 text-xs text-muted">
                 Last generated: {new Date(leaderboard.computed_at).toLocaleString()}
               </span>
             )}
           </p>
         </div>
         {isOrganizerOrAdmin && (
-          <button
-            type="button"
+          <PsButton
+            variant="secondary"
+            size="sm"
             onClick={handleGenerate}
             disabled={generating}
-            className="inline-flex items-center rounded-md bg-white px-3 py-2 text-sm font-semibold text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 hover:bg-gray-50 disabled:opacity-50 whitespace-nowrap"
           >
-            {generating ? <><Spinner size="sm" /><span className="ml-2">Generating…</span></> : '↻ Generate / Refresh'}
-          </button>
+            {generating ? 'Generating…' : '↻ Generate / Refresh'}
+          </PsButton>
         )}
       </div>
 
-      {genError && <ErrorMessage message={genError} />}
-      {genSuccess && (
-        <div className="rounded-md bg-green-50 p-3 text-sm text-green-700 font-medium">
-          ✓ {genSuccess}
-        </div>
-      )}
+      {genError && <PsAlert variant="error">{genError}</PsAlert>}
+      {genSuccess && <PsAlert variant="success">{genSuccess}</PsAlert>}
 
       {loading ? (
-        <div className="py-8"><Spinner size="lg" /></div>
+        <div className="py-8"><PsLoading /></div>
       ) : error ? (
-        <ErrorMessage message={error} />
+        <PsAlert variant="error">{error}</PsAlert>
       ) : entries.length === 0 ? (
-        <EmptyState
-          title="No rankings yet"
-          description={
-            isOrganizerOrAdmin
-              ? 'Click "Generate / Refresh" to calculate rankings from current statistics.'
-              : 'Rankings have not been generated yet for this leaderboard.'
-          }
-          className="shadow-none rounded-none border border-dashed border-gray-200"
-          {...(isOrganizerOrAdmin
-            ? { actionText: 'Generate Now', onAction: handleGenerate }
-            : {})}
-        />
+        <div className="py-6 border border-dashed border-border rounded-xl">
+          <PsEmpty
+            title="No rankings yet"
+            message={
+              isOrganizerOrAdmin
+                ? 'Click "Generate / Refresh" to calculate rankings from current statistics.'
+                : 'Rankings have not been generated yet for this leaderboard.'
+            }
+            action={
+              isOrganizerOrAdmin ? (
+                <PsButton onClick={handleGenerate} disabled={generating}>
+                  Generate Now
+                </PsButton>
+              ) : undefined
+            }
+          />
+        </div>
       ) : (
-        <div className="overflow-x-auto -mx-4 sm:-mx-6">
-          <table className="min-w-full divide-y divide-gray-200">
-            <thead className="bg-gray-50">
+        <div className="overflow-x-auto rounded-xl border border-border">
+          <table className="min-w-full divide-y divide-border text-sm">
+            <thead className="bg-pill-hover">
               <tr>
-                <th className="px-4 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-16">
+                <th className="px-4 py-3 text-left font-medium text-secondary uppercase tracking-wider w-16">
                   Rank
                 </th>
-                <th className="px-4 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th className="px-4 py-3 text-left font-medium text-secondary uppercase tracking-wider">
                   {isPlayer ? 'Player' : 'Team'}
                 </th>
-                <th className="px-4 sm:px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th className="px-4 py-3 text-right font-medium text-secondary uppercase tracking-wider">
                   {leaderboard.stat_key.replace(/_/g, ' ')}
                 </th>
               </tr>
             </thead>
-            <tbody className="bg-white divide-y divide-gray-100">
+            <tbody className="bg-surface divide-y divide-border">
               {entries.map((entry) => (
-                <tr key={entry.id} className="hover:bg-gray-50 transition-colors">
-                  <td className="px-4 sm:px-6 py-3 whitespace-nowrap">
-                    <span className={`inline-flex items-center justify-center h-7 w-7 rounded-full ring-1 text-sm font-bold ${getRankBadgeClass(entry.rank)}`}>
+                <tr key={entry.id} className="hover:bg-pill-hover transition-colors">
+                  <td className="px-4 py-3 whitespace-nowrap">
+                    <span className={`inline-flex items-center justify-center h-8 w-8 rounded-full font-bold ${getRankBadgeClass(entry.rank)}`}>
                       {entry.rank}
                     </span>
                   </td>
-                  <td className="px-4 sm:px-6 py-3 whitespace-nowrap">
+                  <td className="px-4 py-3 whitespace-nowrap">
                     <div className="flex items-center gap-3">
                       {isPlayer ? (
                         <>
@@ -147,14 +144,14 @@ export default function LeaderboardEntriesTable({ leaderboard, isOrganizerOrAdmi
                             <img
                               src={entry.avatar_url}
                               alt={entry.display_name}
-                              className="h-8 w-8 rounded-full object-cover flex-shrink-0"
+                              className="h-8 w-8 rounded-full object-cover shrink-0"
                             />
                           ) : (
-                            <span className="h-8 w-8 rounded-full bg-indigo-100 flex items-center justify-center text-indigo-700 font-semibold text-sm flex-shrink-0">
+                            <span className="h-8 w-8 rounded-full bg-maroon/10 flex items-center justify-center text-maroon font-semibold shrink-0">
                               {(entry.display_name || '?')[0].toUpperCase()}
                             </span>
                           )}
-                          <span className="text-sm font-medium text-gray-900">{entry.display_name || 'Unknown'}</span>
+                          <span className="font-medium text-primary">{entry.display_name || 'Unknown'}</span>
                         </>
                       ) : (
                         <>
@@ -162,20 +159,20 @@ export default function LeaderboardEntriesTable({ leaderboard, isOrganizerOrAdmi
                             <img
                               src={entry.logo_url}
                               alt={entry.team_name}
-                              className="h-8 w-8 rounded object-contain flex-shrink-0"
+                              className="h-8 w-8 rounded-md object-contain shrink-0"
                             />
                           ) : (
-                            <span className="h-8 w-8 rounded bg-blue-100 flex items-center justify-center text-blue-700 font-semibold text-sm flex-shrink-0">
+                            <span className="h-8 w-8 rounded-md bg-gold/10 flex items-center justify-center text-gold font-semibold shrink-0">
                               {(entry.team_name || '?')[0].toUpperCase()}
                             </span>
                           )}
-                          <span className="text-sm font-medium text-gray-900">{entry.team_name || 'Unknown'}</span>
+                          <span className="font-medium text-primary">{entry.team_name || 'Unknown'}</span>
                         </>
                       )}
                     </div>
                   </td>
-                  <td className="px-4 sm:px-6 py-3 whitespace-nowrap text-right">
-                    <span className="text-sm font-semibold text-gray-900 tabular-nums">
+                  <td className="px-4 py-3 whitespace-nowrap text-right">
+                    <span className="font-bold text-primary tabular-nums">
                       {Number(entry.stat_value).toLocaleString(undefined, { maximumFractionDigits: 4 })}
                     </span>
                   </td>

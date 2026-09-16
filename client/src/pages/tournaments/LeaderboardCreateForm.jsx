@@ -1,15 +1,13 @@
 import { useState, useEffect } from 'react';
 import { api } from '../../lib/api';
-import Spinner from '../../components/Spinner';
-import ErrorMessage from '../../components/ErrorMessage';
+import {
+  PsButton,
+  PsInput,
+  PsSelect,
+  PsAlert,
+  PsLoading
+} from '../../components/ui';
 
-/**
- * LeaderboardCreateForm — lets organizer/admin create a new leaderboard.
- * Props:
- *   tournament : full tournament object (provides sport_id)
- *   onCreated  : callback(newLeaderboard)
- *   onCancel   : callback()
- */
 export default function LeaderboardCreateForm({ tournament, onCreated, onCancel }) {
   const [statDefs, setStatDefs] = useState([]);
   const [defsLoading, setDefsLoading] = useState(true);
@@ -37,14 +35,12 @@ export default function LeaderboardCreateForm({ tournament, onCreated, onCancel 
     load();
   }, [tournament.sport_id]);
 
-  // Filter stat defs by the selected leaderboard type's applicability
   const filteredDefs = statDefs.filter((d) => {
     if (lbType === 'player') return d.applies_to === 'player' || d.applies_to === 'both';
     if (lbType === 'team') return d.applies_to === 'team' || d.applies_to === 'both';
     return true;
   });
 
-  // Reset statKey when lbType changes if currently selected key is incompatible
   useEffect(() => {
     const available = statDefs.filter((d) => {
       if (lbType === 'player') return d.applies_to === 'player' || d.applies_to === 'both';
@@ -85,46 +81,39 @@ export default function LeaderboardCreateForm({ tournament, onCreated, onCancel 
 
   return (
     <form onSubmit={handleSubmit} className="space-y-4 max-w-lg">
-      <h5 className="text-sm font-semibold text-gray-900">Create New Leaderboard</h5>
+      <h5 className="text-base font-serif font-semibold text-primary">Create New Leaderboard</h5>
 
-      <ErrorMessage message={submitError} />
-      <ErrorMessage message={defsError} />
+      {submitError && <PsAlert variant="error">{submitError}</PsAlert>}
+      {defsError && <PsAlert variant="error">{defsError}</PsAlert>}
 
-      <div>
-        <label className="block text-sm font-medium text-gray-700">Leaderboard Name</label>
-        <input
-          type="text"
-          value={name}
-          onChange={(e) => setName(e.target.value)}
-          placeholder="e.g. Top Scorers"
-          maxLength={120}
-          className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
-          disabled={submitting}
-        />
-      </div>
+      <PsInput
+        label="Leaderboard Name"
+        value={name}
+        onChange={(e) => setName(e.target.value)}
+        placeholder="e.g. Top Scorers"
+        maxLength={120}
+        disabled={submitting}
+      />
 
-      <div>
-        <label className="block text-sm font-medium text-gray-700">Participant Type</label>
-        <select
-          value={lbType}
-          onChange={(e) => setLbType(e.target.value)}
-          className="mt-1 block w-full rounded-md border-gray-300 py-2 pl-3 pr-10 text-base focus:border-indigo-500 focus:outline-none focus:ring-indigo-500 sm:text-sm"
-          disabled={submitting}
-        >
-          <option value="player">Player</option>
-          <option value="team">Team</option>
-        </select>
-      </div>
+      <PsSelect
+        label="Participant Type"
+        value={lbType}
+        onChange={(e) => setLbType(e.target.value)}
+        disabled={submitting}
+      >
+        <option value="player">Player</option>
+        <option value="team">Team</option>
+      </PsSelect>
 
       <div>
-        <label className="block text-sm font-medium text-gray-700">Statistic</label>
+        <label className="block text-sm font-medium text-primary mb-1">Statistic</label>
         {defsLoading ? (
-          <Spinner size="sm" className="mt-2" />
+          <div className="py-2"><PsLoading message="Loading statistics..." /></div>
         ) : (
           <select
             value={statKey}
             onChange={(e) => setStatKey(e.target.value)}
-            className="mt-1 block w-full rounded-md border-gray-300 py-2 pl-3 pr-10 text-base focus:border-indigo-500 focus:outline-none focus:ring-indigo-500 sm:text-sm"
+            className="w-full rounded-xl border border-border bg-surface text-primary px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-maroon/40 transition"
             disabled={submitting || filteredDefs.length === 0}
           >
             <option value="">-- Select statistic --</option>
@@ -136,26 +125,25 @@ export default function LeaderboardCreateForm({ tournament, onCreated, onCancel 
           </select>
         )}
         {!defsLoading && filteredDefs.length === 0 && !defsError && (
-          <p className="mt-1 text-xs text-amber-600">No {lbType} statistics defined for this sport.</p>
+          <p className="mt-1 text-xs text-warning">No {lbType} statistics defined for this sport.</p>
         )}
       </div>
 
       <div className="flex items-center gap-3 pt-2">
-        <button
+        <PsButton
           type="submit"
           disabled={submitting || defsLoading || !name.trim() || !statKey}
-          className="inline-flex items-center rounded-md bg-indigo-600 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-indigo-500 disabled:opacity-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600"
         >
-          {submitting ? <Spinner size="sm" /> : 'Create Leaderboard'}
-        </button>
-        <button
+          {submitting ? 'Creating...' : 'Create Leaderboard'}
+        </PsButton>
+        <PsButton
           type="button"
+          variant="ghost"
           onClick={onCancel}
           disabled={submitting}
-          className="text-sm font-medium text-gray-600 hover:text-gray-900 disabled:opacity-50"
         >
           Cancel
-        </button>
+        </PsButton>
       </div>
     </form>
   );

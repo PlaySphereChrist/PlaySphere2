@@ -1,9 +1,15 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { api } from '../../lib/api';
-import Spinner from '../../components/Spinner';
-import ErrorMessage from '../../components/ErrorMessage';
-import EmptyState from '../../components/EmptyState';
+import {
+  PsButton,
+  PsCard,
+  PsBadge,
+  PsAlert,
+  PsPageHeader,
+  PsLoading,
+  PsEmpty
+} from '../../components/ui';
 
 export default function MyRegistrationsPage() {
   const [registrations, setRegistrations] = useState([]);
@@ -36,68 +42,72 @@ export default function MyRegistrationsPage() {
     }
   };
 
-  if (loading) return <div className="py-12"><Spinner size="lg" /></div>;
+  if (loading) return <PsLoading />;
   
   return (
-    <div className="max-w-7xl mx-auto space-y-6">
-      <h1 className="text-2xl font-semibold text-gray-900">My Registrations</h1>
+    <div className="space-y-6">
+      <PsPageHeader title="My Registrations" />
       
-      <ErrorMessage message={error} />
+      {error && <PsAlert variant="error">{error}</PsAlert>}
       
       {registrations.length === 0 && !error ? (
-        <EmptyState 
+        <PsEmpty 
           title="No registrations found" 
-          description="You haven't registered for any tournaments yet." 
-          actionText="Browse Tournaments" 
-          actionLink="/tournaments"
+          message="You haven't registered for any tournaments yet." 
+          action={
+            <Link to="/tournaments">
+              <PsButton>Browse Tournaments</PsButton>
+            </Link>
+          }
         />
       ) : (
-        <div className="bg-white shadow overflow-hidden sm:rounded-md">
-          <ul role="list" className="divide-y divide-gray-200">
-            {registrations.map((reg) => (
-              <li key={reg.registration_id}>
-                <div className="block hover:bg-gray-50">
-                  <div className="px-4 py-4 sm:px-6">
-                    <div className="flex items-center justify-between">
-                      <p className="text-sm font-medium text-indigo-600 truncate">
-                        <Link to={`/tournaments/${reg.tournament_id}`}>{reg.tournament_name}</Link>
-                      </p>
-                      <div className="ml-2 flex flex-shrink-0">
-                        <p className={`inline-flex rounded-full px-2 text-xs font-semibold leading-5 ${
-                          reg.registration_status === 'approved' ? 'bg-green-100 text-green-800' :
-                          reg.registration_status === 'pending' ? 'bg-yellow-100 text-yellow-800' :
-                          reg.registration_status === 'withdrawn' ? 'bg-gray-100 text-gray-800' :
-                          'bg-red-100 text-red-800'
-                        }`}>
-                          {reg.registration_status.toUpperCase()}
-                        </p>
-                      </div>
-                    </div>
-                    <div className="mt-2 sm:flex sm:justify-between">
-                      <div className="sm:flex">
-                        <p className="flex items-center text-sm text-gray-500">
-                          {reg.sport_name} • {reg.participation_type}
-                        </p>
-                      </div>
-                      <div className="mt-2 flex items-center text-sm text-gray-500 sm:mt-0">
-                        <p>
-                          Registered on <time dateTime={reg.registered_at}>{new Date(reg.registered_at).toLocaleDateString()}</time>
-                        </p>
-                        {['pending', 'approved'].includes(reg.registration_status) && (
-                          <button
-                            onClick={() => handleCancel(reg.tournament_id, reg.registration_id)}
-                            className="ml-4 text-red-600 hover:text-red-900 font-medium"
-                          >
-                            Cancel
-                          </button>
-                        )}
-                      </div>
-                    </div>
+        <div className="space-y-4">
+          {registrations.map((reg) => (
+            <PsCard key={reg.registration_id} className="hover:border-maroon/50 transition">
+              <div className="px-6 py-5">
+                <div className="flex items-center justify-between">
+                  <h3 className="text-lg font-serif font-bold text-primary truncate">
+                    <Link to={`/tournaments/${reg.tournament_id}`} className="hover:text-maroon transition">
+                      {reg.tournament_name}
+                    </Link>
+                  </h3>
+                  <div className="ml-2 flex flex-shrink-0">
+                    <PsBadge variant={
+                      reg.registration_status === 'approved' ? 'success' :
+                      reg.registration_status === 'pending' ? 'warning' :
+                      reg.registration_status === 'withdrawn' ? 'default' : 'danger'
+                    }>
+                      {reg.registration_status.toUpperCase()}
+                    </PsBadge>
                   </div>
                 </div>
-              </li>
-            ))}
-          </ul>
+                
+                <div className="mt-3 flex flex-col sm:flex-row sm:justify-between sm:items-end gap-3">
+                  <div className="flex flex-col gap-1 text-sm text-secondary">
+                    <p className="flex items-center gap-1.5">
+                      <span className="text-muted">🏆</span>
+                      {reg.sport_name} • <span className="capitalize">{reg.participation_type}</span>
+                    </p>
+                    <p className="flex items-center gap-1.5 text-xs">
+                      <span className="text-muted">📅</span>
+                      Registered on <time dateTime={reg.registered_at}>{new Date(reg.registered_at).toLocaleDateString()}</time>
+                    </p>
+                  </div>
+                  
+                  {['pending', 'approved'].includes(reg.registration_status) && (
+                    <PsButton
+                      variant="ghost"
+                      size="sm"
+                      className="text-error hover:bg-error/10 hover:text-error"
+                      onClick={() => handleCancel(reg.tournament_id, reg.registration_id)}
+                    >
+                      Cancel Registration
+                    </PsButton>
+                  )}
+                </div>
+              </div>
+            </PsCard>
+          ))}
         </div>
       )}
     </div>

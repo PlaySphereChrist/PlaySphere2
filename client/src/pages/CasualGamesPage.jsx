@@ -2,6 +2,17 @@ import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { api } from '../lib/api';
 import { useAuth } from '../store/AuthContext';
+import {
+  PsButton,
+  PsCard,
+  PsSelect,
+  PsInput,
+  PsBadge,
+  PsAlert,
+  PsPageHeader,
+  PsLoading,
+  PsEmpty
+} from '../components/ui';
 
 export default function CasualGamesPage() {
   const [games, setGames] = useState([]);
@@ -50,122 +61,149 @@ export default function CasualGamesPage() {
     fetchGames();
   }, [sportId, status, skillLevel, date]);
 
+  const getStatusVariant = (s) => {
+    switch (s) {
+      case 'open': return 'success';
+      case 'full': return 'warning';
+      case 'cancelled': return 'danger';
+      case 'completed': return 'default';
+      default: return 'default';
+    }
+  };
+
+  const getSportEmoji = (name) => {
+    const lower = name?.toLowerCase() || '';
+    if (lower.includes('football')) return '⚽';
+    if (lower.includes('basketball')) return '🏀';
+    if (lower.includes('cricket')) return '🏏';
+    if (lower.includes('volleyball')) return '🏐';
+    return '🏆';
+  };
+
   return (
-    <div className="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
-      <div className="px-4 sm:px-0 flex justify-between items-center mb-6">
-        <h1 className="text-2xl font-semibold text-gray-900">Casual Games</h1>
-        <Link
-          to="/casual-games/create"
-          className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-indigo-600 hover:bg-indigo-700"
-        >
-          Create Game
-        </Link>
-      </div>
+    <div className="space-y-6">
+      <PsPageHeader 
+        title="Casual Games" 
+        subtitle="Find and join pickup games in your area."
+        actions={
+          <Link to="/casual-games/create">
+            <PsButton>Create Game</PsButton>
+          </Link>
+        }
+      />
 
-      <div className="bg-white p-4 shadow sm:rounded-md mb-6">
+      <PsCard className="p-4 bg-surface">
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-4">
-          <div>
-            <label className="block text-sm font-medium text-gray-700">Sport</label>
-            <select
-              value={sportId}
-              onChange={(e) => setSportId(e.target.value)}
-              className="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-md"
-            >
-              <option value="">All Sports</option>
-              {sports.map(s => (
-                <option key={s.id} value={s.id}>{s.name}</option>
-              ))}
-            </select>
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-700">Status</label>
-            <select
-              value={status}
-              onChange={(e) => setStatus(e.target.value)}
-              className="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-md"
-            >
-              <option value="open">Open</option>
-              <option value="full">Full</option>
-              <option value="cancelled">Cancelled</option>
-              <option value="completed">Completed</option>
-              <option value="">All Statuses</option>
-            </select>
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-700">Skill Level</label>
-            <select
-              value={skillLevel}
-              onChange={(e) => setSkillLevel(e.target.value)}
-              className="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-md"
-            >
-              <option value="">All Levels</option>
-              <option value="Beginner">Beginner</option>
-              <option value="Intermediate">Intermediate</option>
-              <option value="Expert">Expert</option>
-              <option value="Professional">Professional</option>
-            </select>
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-700">Date</label>
-            <input
-              type="date"
-              value={date}
-              onChange={(e) => setDate(e.target.value)}
-              className="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-md"
-            />
-          </div>
-        </div>
-      </div>
+          <PsSelect
+            label="Sport"
+            value={sportId}
+            onChange={(e) => setSportId(e.target.value)}
+          >
+            <option value="">All Sports</option>
+            {sports.map(s => (
+              <option key={s.id} value={s.id}>{s.name}</option>
+            ))}
+          </PsSelect>
 
-      {error && (
-        <div className="bg-red-50 p-4 rounded-md mb-6 text-red-700">
-          {error}
+          <PsSelect
+            label="Status"
+            value={status}
+            onChange={(e) => setStatus(e.target.value)}
+          >
+            <option value="open">Open</option>
+            <option value="full">Full</option>
+            <option value="cancelled">Cancelled</option>
+            <option value="completed">Completed</option>
+            <option value="">All Statuses</option>
+          </PsSelect>
+
+          <PsSelect
+            label="Skill Level"
+            value={skillLevel}
+            onChange={(e) => setSkillLevel(e.target.value)}
+          >
+            <option value="">All Levels</option>
+            <option value="Beginner">Beginner</option>
+            <option value="Intermediate">Intermediate</option>
+            <option value="Expert">Expert</option>
+            <option value="Professional">Professional</option>
+          </PsSelect>
+
+          <PsInput
+            label="Date"
+            type="date"
+            value={date}
+            onChange={(e) => setDate(e.target.value)}
+          />
         </div>
-      )}
+      </PsCard>
+
+      {error && <PsAlert variant="error">{error}</PsAlert>}
 
       {loading ? (
-        <div className="text-center py-10">Loading games...</div>
+        <PsLoading />
       ) : games.length === 0 ? (
-        <div className="text-center py-10 bg-white shadow sm:rounded-md text-gray-500">
-          No casual games found matching your filters.
-        </div>
+        <PsEmpty 
+          title="No casual games found" 
+          message="No casual games found matching your filters." 
+          action={
+            <Link to="/casual-games/create">
+              <PsButton>Create Game</PsButton>
+            </Link>
+          }
+        />
       ) : (
         <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
           {games.map(game => (
-            <div key={game.id} className="bg-white overflow-hidden shadow rounded-lg flex flex-col">
-              <div className="px-4 py-5 sm:p-6 flex-grow">
-                <div className="flex items-center justify-between mb-2">
-                  <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
-                    {game.sport_name}
-                  </span>
-                  <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                    game.status === 'open' ? 'bg-green-100 text-green-800' :
-                    game.status === 'full' ? 'bg-yellow-100 text-yellow-800' :
-                    'bg-gray-100 text-gray-800'
-                  }`}>
+            <PsCard key={game.id} className="flex flex-col hover:border-maroon/50 transition">
+              <div className="p-6 flex-grow">
+                <div className="flex items-center justify-between mb-4 border-b border-border pb-3">
+                  <PsBadge variant="default">
+                    {getSportEmoji(game.sport_name)} {game.sport_name}
+                  </PsBadge>
+                  <PsBadge variant={getStatusVariant(game.status)}>
                     {game.status.toUpperCase()}
-                  </span>
+                  </PsBadge>
                 </div>
-                <h3 className="text-lg font-medium text-gray-900 truncate" title={game.title}>{game.title}</h3>
-                <div className="mt-2 text-sm text-gray-500 space-y-1">
-                  <p>📅 {new Date(game.scheduled_at).toLocaleDateString()} at {new Date(game.scheduled_at).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</p>
-                  <p>📍 {game.location_name}</p>
-                  <p>⭐ {game.skill_level}</p>
-                  <p>👥 {game.current_participants} / {game.max_participants} Players</p>
+                <h3 className="text-xl font-serif font-bold text-primary truncate" title={game.title}>
+                  {game.title}
+                </h3>
+                <div className="mt-4 text-sm text-secondary space-y-2">
+                  <p className="flex items-center gap-2">
+                    <span className="text-muted">📅</span>
+                    {new Date(game.scheduled_at).toLocaleDateString()} at {new Date(game.scheduled_at).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
+                  </p>
+                  <p className="flex items-center gap-2">
+                    <span className="text-muted">📍</span>
+                    <span className="truncate">{game.location_name}</span>
+                  </p>
+                  <p className="flex items-center gap-2">
+                    <span className="text-muted">⭐</span>
+                    {game.skill_level}
+                  </p>
+                  <div className="flex items-center gap-2 mt-4">
+                    <span className="text-muted">👥</span>
+                    <div className="flex-1 bg-surface border border-border h-2.5 rounded-full overflow-hidden">
+                      <div 
+                        className="h-full bg-maroon/60 rounded-full" 
+                        style={{ width: `${Math.min(100, (game.current_participants / game.max_participants) * 100)}%` }}
+                      />
+                    </div>
+                    <span className="text-xs font-medium text-primary w-12 text-right">
+                      {game.current_participants}/{game.max_participants}
+                    </span>
+                  </div>
                 </div>
               </div>
-              <div className="bg-gray-50 px-4 py-4 sm:px-6 flex justify-between items-center">
-                <div className="text-sm text-gray-500">
-                  By {game.creator_id === user?.id ? 'You' : game.creator_name}
+              <div className="bg-pill-hover px-6 py-4 border-t border-border flex justify-between items-center rounded-b-2xl">
+                <div className="text-sm text-secondary">
+                  By <span className="font-medium text-primary">{game.creator_id === user?.id ? 'You' : game.creator_name}</span>
                 </div>
-                <Link
-                  to={`/casual-games/${game.id}`}
-                  className="text-indigo-600 hover:text-indigo-900 font-medium text-sm"
-                >
-                  View Details
+                <Link to={`/casual-games/${game.id}`}>
+                  <PsButton size="sm">View</PsButton>
                 </Link>
               </div>
-            </div>
+            </PsCard>
           ))}
         </div>
       )}

@@ -1,8 +1,16 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { api } from '../../../lib/api';
-import Spinner from '../../../components/Spinner';
-import ErrorMessage from '../../../components/ErrorMessage';
+import {
+  PsButton,
+  PsCard,
+  PsInput,
+  PsSelect,
+  PsTextarea,
+  PsAlert,
+  PsPageHeader,
+  PsLoading
+} from '../../../components/ui';
 
 export default function TournamentFormPage() {
   const { tournamentId } = useParams();
@@ -41,7 +49,6 @@ export default function TournamentFormPage() {
         if (isEdit) {
           const tRes = await api.get(`/tournaments/${tournamentId}`);
           const t = tRes.data.tournament;
-          // Format dates for datetime-local input
           const formatDate = (ds) => ds ? new Date(ds).toISOString().slice(0, 16) : '';
           
           setFormData({
@@ -82,7 +89,6 @@ export default function TournamentFormPage() {
     setError('');
 
     try {
-      // Clean up empty numbers
       const payload = { ...formData };
       ['max_teams', 'min_teams', 'registration_fee', 'prize_pool'].forEach(f => {
         if (payload[f] === '') payload[f] = null;
@@ -107,131 +113,176 @@ export default function TournamentFormPage() {
     }
   };
 
-  if (loading) return <div className="py-12"><Spinner size="lg" /></div>;
+  if (loading) return <PsLoading />;
 
   return (
-    <div className="max-w-3xl mx-auto space-y-6">
-      <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-semibold text-gray-900">
-          {isEdit ? 'Edit Tournament' : 'Create Tournament'}
-        </h1>
-        <Link to="/organizer/tournaments" className="text-sm text-indigo-600 hover:text-indigo-500">
-          Cancel
-        </Link>
-      </div>
+    <div className="max-w-4xl mx-auto space-y-6">
+      <PsPageHeader 
+        title={isEdit ? 'Edit Tournament' : 'Create Tournament'} 
+        actions={
+          <Link to="/organizer/tournaments">
+            <PsButton variant="ghost">Cancel</PsButton>
+          </Link>
+        }
+      />
 
-      <ErrorMessage message={error} />
+      {error && <PsAlert variant="error">{error}</PsAlert>}
 
-      <form onSubmit={handleSubmit} className="bg-white shadow sm:rounded-lg px-4 py-5 sm:p-6 space-y-6">
-        
-        <div className="grid grid-cols-1 gap-y-6 gap-x-4 sm:grid-cols-6">
-          <div className="sm:col-span-4">
-            <label className="block text-sm font-medium text-gray-700">Tournament Name *</label>
-            <input type="text" name="name" required value={formData.name} onChange={handleChange} className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm" />
-          </div>
+      <PsCard className="p-6">
+        <form onSubmit={handleSubmit} className="space-y-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+            <div className="sm:col-span-2">
+              <PsInput
+                label="Tournament Name *"
+                name="name"
+                required
+                value={formData.name}
+                onChange={handleChange}
+              />
+            </div>
 
-          <div className="sm:col-span-3">
-            <label className="block text-sm font-medium text-gray-700">Sport *</label>
-            <select name="sport_id" required disabled={isEdit} value={formData.sport_id} onChange={handleChange} className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm">
+            <PsSelect
+              label="Sport *"
+              name="sport_id"
+              required
+              disabled={isEdit}
+              value={formData.sport_id}
+              onChange={handleChange}
+            >
               <option value="">Select Sport</option>
               {sports.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
-            </select>
-          </div>
+            </PsSelect>
 
-          <div className="sm:col-span-3">
-            <label className="block text-sm font-medium text-gray-700">Format *</label>
-            <select name="format" required value={formData.format} onChange={handleChange} className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm">
+            <PsSelect
+              label="Format *"
+              name="format"
+              required
+              value={formData.format}
+              onChange={handleChange}
+            >
               <option value="knockout">Knockout</option>
               <option value="league">League</option>
               <option value="round_robin">Round Robin</option>
               <option value="group_stage_knockout">Group Stage & Knockout</option>
-            </select>
-          </div>
+            </PsSelect>
 
-          <div className="sm:col-span-3">
-            <label className="block text-sm font-medium text-gray-700">Participation Type *</label>
-            <select name="participation_type" required disabled={isEdit} value={formData.participation_type} onChange={handleChange} className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm">
+            <PsSelect
+              label="Participation Type *"
+              name="participation_type"
+              required
+              disabled={isEdit}
+              value={formData.participation_type}
+              onChange={handleChange}
+            >
               <option value="team">Team</option>
               <option value="individual">Individual</option>
-            </select>
-          </div>
-          
-          <div className="sm:col-span-6">
-            <label className="block text-sm font-medium text-gray-700">Description</label>
-            <textarea name="description" rows={3} value={formData.description} onChange={handleChange} className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm" />
+            </PsSelect>
+            
+            <div className="sm:col-span-2">
+              <PsTextarea
+                label="Description"
+                name="description"
+                rows={3}
+                value={formData.description}
+                onChange={handleChange}
+              />
+            </div>
+
+            <PsInput
+              label="City"
+              name="city"
+              value={formData.city}
+              onChange={handleChange}
+            />
+            
+            <PsInput
+              label="Venue Details"
+              name="venue_details"
+              value={formData.venue_details}
+              onChange={handleChange}
+            />
+
+            <PsInput
+              label="Registration Opens At"
+              type="datetime-local"
+              name="registration_opens_at"
+              value={formData.registration_opens_at}
+              onChange={handleChange}
+            />
+
+            <PsInput
+              label="Registration Closes At"
+              type="datetime-local"
+              name="registration_closes_at"
+              value={formData.registration_closes_at}
+              onChange={handleChange}
+            />
+
+            <PsInput
+              label="Tournament Starts At"
+              type="datetime-local"
+              name="starts_at"
+              value={formData.starts_at}
+              onChange={handleChange}
+            />
+
+            <PsInput
+              label="Tournament Ends At"
+              type="datetime-local"
+              name="ends_at"
+              value={formData.ends_at}
+              onChange={handleChange}
+            />
+
+            <PsInput
+              label={`Max Capacity (${formData.participation_type === 'team' ? 'Teams' : 'Players'})`}
+              type="number"
+              min="2"
+              name="max_teams"
+              value={formData.max_teams}
+              onChange={handleChange}
+            />
+
+            <PsInput
+              label={`Min Required (${formData.participation_type === 'team' ? 'Teams' : 'Players'})`}
+              type="number"
+              min="2"
+              name="min_teams"
+              value={formData.min_teams}
+              onChange={handleChange}
+            />
+
+            <PsInput
+              label="Registration Fee"
+              type="number"
+              min="0"
+              step="0.01"
+              name="registration_fee"
+              value={formData.registration_fee}
+              onChange={handleChange}
+            />
+
+            <PsInput
+              label="Prize Pool"
+              type="number"
+              min="0"
+              step="0.01"
+              name="prize_pool"
+              value={formData.prize_pool}
+              onChange={handleChange}
+            />
           </div>
 
-          <div className="sm:col-span-3">
-            <label className="block text-sm font-medium text-gray-700">City</label>
-            <input type="text" name="city" value={formData.city} onChange={handleChange} className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm" />
+          <div className="pt-6 flex justify-end gap-3 border-t border-border mt-6">
+            <Link to="/organizer/tournaments">
+              <PsButton variant="ghost" type="button">Cancel</PsButton>
+            </Link>
+            <PsButton type="submit" disabled={saving}>
+              {saving ? 'Saving...' : 'Save Tournament'}
+            </PsButton>
           </div>
-          
-          <div className="sm:col-span-3">
-            <label className="block text-sm font-medium text-gray-700">Venue Details</label>
-            <input type="text" name="venue_details" value={formData.venue_details} onChange={handleChange} className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm" />
-          </div>
-
-          <div className="sm:col-span-3">
-            <label className="block text-sm font-medium text-gray-700">Registration Opens At</label>
-            <input type="datetime-local" name="registration_opens_at" value={formData.registration_opens_at} onChange={handleChange} className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm" />
-          </div>
-
-          <div className="sm:col-span-3">
-            <label className="block text-sm font-medium text-gray-700">Registration Closes At</label>
-            <input type="datetime-local" name="registration_closes_at" value={formData.registration_closes_at} onChange={handleChange} className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm" />
-          </div>
-
-          <div className="sm:col-span-3">
-            <label className="block text-sm font-medium text-gray-700">Tournament Starts At</label>
-            <input type="datetime-local" name="starts_at" value={formData.starts_at} onChange={handleChange} className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm" />
-          </div>
-
-          <div className="sm:col-span-3">
-            <label className="block text-sm font-medium text-gray-700">Tournament Ends At</label>
-            <input type="datetime-local" name="ends_at" value={formData.ends_at} onChange={handleChange} className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm" />
-          </div>
-
-          {formData.participation_type === 'team' && (
-            <>
-              <div className="sm:col-span-3">
-                <label className="block text-sm font-medium text-gray-700">Max Capacity (Teams)</label>
-                <input type="number" min="2" name="max_teams" value={formData.max_teams} onChange={handleChange} className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm" />
-              </div>
-              <div className="sm:col-span-3">
-                <label className="block text-sm font-medium text-gray-700">Min Required (Teams)</label>
-                <input type="number" min="2" name="min_teams" value={formData.min_teams} onChange={handleChange} className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm" />
-              </div>
-            </>
-          )}
-          {formData.participation_type === 'individual' && (
-            <>
-              <div className="sm:col-span-3">
-                <label className="block text-sm font-medium text-gray-700">Max Capacity (Players)</label>
-                <input type="number" min="2" name="max_teams" value={formData.max_teams} onChange={handleChange} className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm" />
-              </div>
-              <div className="sm:col-span-3">
-                <label className="block text-sm font-medium text-gray-700">Min Required (Players)</label>
-                <input type="number" min="2" name="min_teams" value={formData.min_teams} onChange={handleChange} className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm" />
-              </div>
-            </>
-          )}
-
-          <div className="sm:col-span-3">
-            <label className="block text-sm font-medium text-gray-700">Registration Fee</label>
-            <input type="number" min="0" step="0.01" name="registration_fee" value={formData.registration_fee} onChange={handleChange} className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm" />
-          </div>
-          <div className="sm:col-span-3">
-            <label className="block text-sm font-medium text-gray-700">Prize Pool</label>
-            <input type="number" min="0" step="0.01" name="prize_pool" value={formData.prize_pool} onChange={handleChange} className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm" />
-          </div>
-        </div>
-
-        <div className="pt-5 flex justify-end">
-          <button type="submit" disabled={saving} className="inline-flex justify-center rounded-md bg-indigo-600 py-2 px-4 text-sm font-medium text-white shadow-sm hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 disabled:opacity-50">
-            {saving ? <Spinner size="sm" /> : 'Save Tournament'}
-          </button>
-        </div>
-      </form>
+        </form>
+      </PsCard>
     </div>
   );
 }

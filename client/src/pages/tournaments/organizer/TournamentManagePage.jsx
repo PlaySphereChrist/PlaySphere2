@@ -1,9 +1,14 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { api } from '../../../lib/api';
-import Spinner from '../../../components/Spinner';
-import ErrorMessage from '../../../components/ErrorMessage';
-import TournamentStatusBadge from '../../../components/TournamentStatusBadge';
+import {
+  PsButton,
+  PsCard,
+  PsBadge,
+  PsAlert,
+  PsLoading,
+  PsBackButton
+} from '../../../components/ui';
 
 export default function TournamentManagePage() {
   const { tournamentId } = useParams();
@@ -56,161 +61,188 @@ export default function TournamentManagePage() {
     }
   };
 
-  if (loading) return <div className="py-12"><Spinner size="lg" /></div>;
-  if (error) return <ErrorMessage message={error} />;
+  if (loading) return <PsLoading />;
+  
+  if (error && !tournament) {
+    return (
+      <div className="space-y-4">
+        <PsBackButton to="/organizer/tournaments" label="Back to Managed Tournaments" />
+        <PsAlert variant="error">{error}</PsAlert>
+      </div>
+    );
+  }
+
   if (!tournament) return null;
 
+  const getStatusBadgeVariant = (s) => {
+    switch (s) {
+      case 'registration_open': return 'success';
+      case 'in_progress': return 'maroon';
+      case 'completed': return 'default';
+      case 'cancelled': return 'danger';
+      case 'draft': return 'warning';
+      default: return 'default';
+    }
+  };
+
   return (
-    <div className="max-w-7xl mx-auto space-y-6">
-      <div className="flex items-center justify-between">
+    <div className="max-w-6xl mx-auto space-y-6">
+      <PsBackButton to="/organizer/tournaments" label="Back to Managed Tournaments" />
+      
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 border-b border-border pb-6">
         <div>
-          <Link to="/organizer/tournaments" className="text-sm text-indigo-600 hover:text-indigo-500 mb-2 inline-block">
-            &larr; Back to Managed Tournaments
-          </Link>
-          <h1 className="text-2xl font-semibold text-gray-900">{tournament.name}</h1>
+          <h1 className="text-3xl font-serif font-bold text-primary">{tournament.name}</h1>
+          <p className="mt-1 text-sm text-secondary">
+            Manage your tournament lifecycle, registrations, and waitlist.
+          </p>
         </div>
-        <div className="flex items-center space-x-4">
-          <TournamentStatusBadge status={tournament.status} />
+        <div className="flex items-center gap-3">
+          <PsBadge variant={getStatusBadgeVariant(tournament.status)} className="text-sm px-3 py-1">
+            {tournament.status.replace(/_/g, ' ').toUpperCase()}
+          </PsBadge>
           {tournament.status === 'draft' && (
-            <Link to={`/organizer/tournaments/${tournamentId}/edit`} className="inline-flex items-center rounded-md bg-white px-3 py-2 text-sm font-semibold text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 hover:bg-gray-50">
-              Edit Details
+            <Link to={`/organizer/tournaments/${tournamentId}/edit`}>
+              <PsButton variant="secondary">Edit Details</PsButton>
             </Link>
           )}
         </div>
       </div>
 
-      <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Left Column: Management & Lifecycle */}
         <div className="space-y-6 lg:col-span-1">
           {/* Lifecycle Card */}
-          <div className="bg-white shadow sm:rounded-lg">
-            <div className="px-4 py-5 sm:p-6">
-              <h3 className="text-base font-semibold leading-6 text-gray-900 mb-4">Lifecycle Actions</h3>
-              
-              <div className="space-y-3">
-                {tournament.status === 'draft' && (
-                  <button
-                    onClick={() => handleStatusTransition('registration_open')}
-                    disabled={actionLoading || !validation?.valid}
-                    className="w-full inline-flex justify-center rounded-md bg-indigo-600 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed"
-                  >
-                    Publish (Open Registration)
-                  </button>
-                )}
-                {tournament.status === 'registration_open' && (
-                  <button
-                    onClick={() => handleStatusTransition('registration_closed')}
-                    disabled={actionLoading}
-                    className="w-full inline-flex justify-center rounded-md bg-yellow-600 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-yellow-500 disabled:opacity-50"
-                  >
-                    Close Registration
-                  </button>
-                )}
-                {tournament.status === 'registration_closed' && (
-                  <button
-                    onClick={() => handleStatusTransition('in_progress')}
-                    disabled={actionLoading}
-                    className="w-full inline-flex justify-center rounded-md bg-blue-600 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-blue-500 disabled:opacity-50"
-                  >
-                    Start Tournament
-                  </button>
-                )}
-                
-                <button
-                  onClick={() => handleStatusTransition('cancelled')}
-                  disabled={actionLoading || tournament.status === 'cancelled' || tournament.status === 'archived'}
-                  className="w-full inline-flex justify-center rounded-md bg-white px-3 py-2 text-sm font-semibold text-red-600 shadow-sm ring-1 ring-inset ring-red-300 hover:bg-red-50 disabled:opacity-50"
+          <PsCard className="p-6">
+            <h3 className="text-lg font-serif font-semibold text-primary mb-4">Lifecycle Actions</h3>
+            
+            <div className="space-y-3">
+              {tournament.status === 'draft' && (
+                <PsButton
+                  className="w-full"
+                  onClick={() => handleStatusTransition('registration_open')}
+                  disabled={actionLoading || !validation?.valid}
                 >
-                  Cancel Tournament
-                </button>
-              </div>
+                  Publish (Open Registration)
+                </PsButton>
+              )}
+              {tournament.status === 'registration_open' && (
+                <PsButton
+                  className="w-full"
+                  style={{ backgroundColor: '#D97706', color: 'white' }}
+                  onClick={() => handleStatusTransition('registration_closed')}
+                  disabled={actionLoading}
+                >
+                  Close Registration
+                </PsButton>
+              )}
+              {tournament.status === 'registration_closed' && (
+                <PsButton
+                  className="w-full"
+                  style={{ backgroundColor: '#2563EB', color: 'white' }}
+                  onClick={() => handleStatusTransition('in_progress')}
+                  disabled={actionLoading}
+                >
+                  Start Tournament
+                </PsButton>
+              )}
+              
+              <PsButton
+                variant="ghost"
+                className="w-full text-error border border-error/50 hover:bg-error/10"
+                onClick={() => handleStatusTransition('cancelled')}
+                disabled={actionLoading || tournament.status === 'cancelled' || tournament.status === 'archived'}
+              >
+                Cancel Tournament
+              </PsButton>
             </div>
-          </div>
+          </PsCard>
 
           {/* Validation Card */}
           {tournament.status === 'draft' && validation && (
-            <div className={`shadow sm:rounded-lg ${validation.valid ? 'bg-green-50' : 'bg-red-50'}`}>
-              <div className="px-4 py-5 sm:p-6">
-                <h3 className={`text-base font-semibold leading-6 ${validation.valid ? 'text-green-900' : 'text-red-900'}`}>
-                  Configuration Status
-                </h3>
-                {validation.valid ? (
-                  <p className="mt-2 text-sm text-green-700">Tournament is ready to be published.</p>
-                ) : (
-                  <div className="mt-2 text-sm text-red-700">
-                    <p>Cannot publish until the following are resolved:</p>
-                    <ul className="list-disc pl-5 mt-2 space-y-1">
-                      {validation.missing.map(m => <li key={m}>Missing: {m}</li>)}
-                      {validation.errors.map(e => <li key={e}>{e}</li>)}
-                    </ul>
-                  </div>
-                )}
-              </div>
-            </div>
+            <PsCard className={`p-6 border ${validation.valid ? 'border-success/50 bg-success/5' : 'border-error/50 bg-error/5'}`}>
+              <h3 className={`text-lg font-serif font-semibold ${validation.valid ? 'text-success' : 'text-error'}`}>
+                Configuration Status
+              </h3>
+              {validation.valid ? (
+                <p className="mt-2 text-sm text-success">Tournament is ready to be published.</p>
+              ) : (
+                <div className="mt-2 text-sm text-error/90">
+                  <p>Cannot publish until the following are resolved:</p>
+                  <ul className="list-disc pl-5 mt-2 space-y-1">
+                    {validation.missing.map(m => <li key={m}>Missing: {m}</li>)}
+                    {validation.errors.map(e => <li key={e}>{e}</li>)}
+                  </ul>
+                </div>
+              )}
+            </PsCard>
           )}
         </div>
 
         {/* Right Column: Registrations & Waitlist */}
         <div className="space-y-6 lg:col-span-2">
           {/* Registrations */}
-          <div className="bg-white shadow sm:rounded-lg">
-            <div className="px-4 py-5 sm:border-b sm:border-gray-200 sm:px-6">
-              <h3 className="text-base font-semibold leading-6 text-gray-900">
+          <PsCard>
+            <div className="px-6 py-4 border-b border-border bg-pill-hover rounded-t-2xl">
+              <h3 className="font-semibold text-primary">
                 Registrations ({registrations.length} {tournament.max_teams ? `/ ${tournament.max_teams}` : ''})
               </h3>
             </div>
-            <div className="px-4 py-5 sm:p-0">
+            <div>
               {registrations.length === 0 ? (
-                <p className="p-6 text-sm text-gray-500 text-center">No registrations yet.</p>
+                <p className="p-6 text-sm text-secondary text-center">No registrations yet.</p>
               ) : (
-                <ul className="divide-y divide-gray-200">
+                <ul className="divide-y divide-border">
                   {registrations.map(reg => (
-                    <li key={reg.id} className="px-4 py-4 sm:px-6 flex items-center justify-between">
+                    <li key={reg.id} className="px-6 py-4 flex items-center justify-between hover:bg-pill-hover transition">
                       <div>
-                        <p className="text-sm font-medium text-gray-900">{reg.registration_name}</p>
-                        <p className="text-xs text-gray-500">Registered {new Date(reg.registered_at).toLocaleString()}</p>
+                        <p className="font-medium text-primary">{reg.registration_name}</p>
+                        <p className="text-xs text-secondary mt-1">Registered {new Date(reg.registered_at).toLocaleString()}</p>
                       </div>
-                      <div className="flex space-x-2">
-                        <span className="inline-flex items-center rounded-full bg-green-100 px-2 py-0.5 text-xs font-medium text-green-800">
+                      <div className="flex flex-col sm:flex-row gap-2 items-end sm:items-center">
+                        <PsBadge variant={
+                          reg.status === 'approved' ? 'success' :
+                          reg.status === 'pending' ? 'warning' :
+                          reg.status === 'withdrawn' ? 'default' : 'danger'
+                        }>
                           {reg.status}
-                        </span>
-                        <span className="inline-flex items-center rounded-full bg-blue-100 px-2 py-0.5 text-xs font-medium text-blue-800">
+                        </PsBadge>
+                        <PsBadge variant="default" className="text-xs">
                           {reg.eligibility_status}
-                        </span>
+                        </PsBadge>
                       </div>
                     </li>
                   ))}
                 </ul>
               )}
             </div>
-          </div>
+          </PsCard>
 
           {/* Waitlist */}
-          <div className="bg-white shadow sm:rounded-lg">
-            <div className="px-4 py-5 sm:border-b sm:border-gray-200 sm:px-6">
-              <h3 className="text-base font-semibold leading-6 text-gray-900">
+          <PsCard>
+            <div className="px-6 py-4 border-b border-border bg-pill-hover rounded-t-2xl">
+              <h3 className="font-semibold text-primary">
                 Waitlist ({waitlist.length})
               </h3>
             </div>
-            <div className="px-4 py-5 sm:p-0">
+            <div>
               {waitlist.length === 0 ? (
-                <p className="p-6 text-sm text-gray-500 text-center">Waitlist is empty.</p>
+                <p className="p-6 text-sm text-secondary text-center">Waitlist is empty.</p>
               ) : (
-                <ul className="divide-y divide-gray-200">
+                <ul className="divide-y divide-border">
                   {waitlist.map(w => (
-                    <li key={w.id} className="px-4 py-4 sm:px-6 flex items-center justify-between">
+                    <li key={w.id} className="px-6 py-4 flex items-center justify-between hover:bg-pill-hover transition">
                       <div>
-                        <p className="text-sm font-medium text-gray-900">#{w.position} - {w.participant_name}</p>
+                        <p className="font-medium text-primary">#{w.position} - {w.participant_name}</p>
                       </div>
-                      <span className="inline-flex items-center rounded-full bg-yellow-100 px-2 py-0.5 text-xs font-medium text-yellow-800">
+                      <PsBadge variant="warning">
                         {w.status}
-                      </span>
+                      </PsBadge>
                     </li>
                   ))}
                 </ul>
               )}
             </div>
-          </div>
+          </PsCard>
           
         </div>
       </div>
