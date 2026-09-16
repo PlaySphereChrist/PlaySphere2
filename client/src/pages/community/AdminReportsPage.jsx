@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { api } from '../../lib/api';
-import ErrorMessage from '../../components/ErrorMessage';
-import Spinner from '../../components/Spinner';
+import { PsCard, PsButton, PsBadge, PsSelect, PsInput, PsPageHeader, PsLoading, PsAlert, PsEmpty } from '../../components/ui';
 
 export default function AdminReportsPage() {
   const [reports, setReports] = useState([]);
@@ -58,68 +57,73 @@ export default function AdminReportsPage() {
     setModAction(r.moderation_action || '');
   };
 
-  if (loading && reports.length === 0) return <div className="py-12"><Spinner /></div>;
+  if (loading && reports.length === 0) return <PsLoading />;
 
   return (
-    <div className="max-w-6xl mx-auto space-y-6">
-      <div className="bg-white px-4 py-5 border-b border-gray-200 sm:px-6 shadow sm:rounded-lg flex justify-between items-center">
-        <h3 className="text-lg leading-6 font-medium text-gray-900">Community Reports</h3>
-        <select
-          value={statusFilter}
-          onChange={e => setStatusFilter(e.target.value)}
-          className="rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm p-2 border"
-        >
-          <option value="">All Statuses</option>
-          <option value="pending">Pending</option>
-          <option value="reviewed">Reviewed</option>
-          <option value="actioned">Actioned</option>
-          <option value="dismissed">Dismissed</option>
-        </select>
-      </div>
+    <div className="max-w-6xl mx-auto space-y-6 pb-12">
+      <PsPageHeader
+        title="Community Reports"
+        subtitle="Manage user reports for community posts and comments."
+        actions={
+          <PsSelect
+            value={statusFilter}
+            onChange={e => setStatusFilter(e.target.value)}
+            className="w-48"
+          >
+            <option value="">All Statuses</option>
+            <option value="pending">Pending</option>
+            <option value="reviewed">Reviewed</option>
+            <option value="actioned">Actioned</option>
+            <option value="dismissed">Dismissed</option>
+          </PsSelect>
+        }
+      />
 
-      {error && <ErrorMessage message={error} />}
+      {error && <PsAlert variant="error">{error}</PsAlert>}
 
-      <div className="bg-white shadow overflow-hidden sm:rounded-md">
+      <PsCard>
         {reports.length === 0 ? (
-          <div className="p-6 text-center text-gray-500">No reports found.</div>
+          <div className="p-12">
+            <PsEmpty title="No reports found" message="There are no reports matching the selected status." />
+          </div>
         ) : (
-          <ul className="divide-y divide-gray-200">
+          <ul className="divide-y divide-border">
             {reports.map(r => (
-              <li key={r.id} className="p-4 sm:px-6 hover:bg-gray-50">
-                <div className="flex justify-between">
-                  <div>
-                    <p className="text-sm font-medium text-indigo-600 truncate">
+              <li key={r.id} className="p-6 hover:bg-pill-hover transition">
+                <div className="flex flex-col sm:flex-row justify-between gap-4">
+                  <div className="flex-1">
+                    <p className="text-sm font-bold text-primary">
                       Reported by {r.reporter_email}
                     </p>
-                    <p className="mt-1 text-sm text-gray-600">
-                      <strong>Reason:</strong> {r.reason}
+                    <p className="mt-2 text-sm text-secondary">
+                      <strong className="text-primary">Reason:</strong> {r.reason}
                     </p>
                     {r.description && (
-                      <p className="mt-1 text-sm text-gray-500 italic">
+                      <p className="mt-2 text-sm text-secondary italic bg-surface p-3 rounded-md border border-border">
                         &ldquo;{r.description}&rdquo;
                       </p>
                     )}
-                    <div className="mt-2 text-xs text-gray-400 space-y-1">
-                      {r.post_id && <div>Post ID: <span className="font-mono">{r.post_id}</span></div>}
-                      {r.comment_id && <div>Comment ID: <span className="font-mono">{r.comment_id}</span></div>}
+                    <div className="mt-3 text-xs text-muted space-y-1">
+                      {r.post_id && <div>Post ID: <span className="font-mono bg-surface px-1 py-0.5 rounded">{r.post_id}</span></div>}
+                      {r.comment_id && <div>Comment ID: <span className="font-mono bg-surface px-1 py-0.5 rounded">{r.comment_id}</span></div>}
                       <div>Reported on: {new Date(r.created_at).toLocaleString()}</div>
                     </div>
                   </div>
                   
-                  <div className="ml-4 flex flex-col items-end space-y-2">
-                    <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
-                      r.status === 'pending' ? 'bg-yellow-100 text-yellow-800' :
-                      r.status === 'actioned' ? 'bg-green-100 text-green-800' :
-                      r.status === 'dismissed' ? 'bg-gray-100 text-gray-800' :
-                      'bg-blue-100 text-blue-800'
-                    }`}>
+                  <div className="flex flex-col items-start sm:items-end space-y-3 shrink-0">
+                    <PsBadge variant={
+                      r.status === 'pending' ? 'warning' :
+                      r.status === 'actioned' ? 'success' :
+                      r.status === 'dismissed' ? 'default' :
+                      'info'
+                    }>
                       {r.status.toUpperCase()}
-                    </span>
+                    </PsBadge>
                     
                     {actioningId !== r.id && (
                       <button 
                         onClick={() => startAction(r)}
-                        className="text-indigo-600 hover:text-indigo-900 text-sm font-medium mt-2"
+                        className="text-maroon hover:text-maroon/80 text-sm font-bold transition underline"
                       >
                         Update Status
                       </button>
@@ -128,46 +132,32 @@ export default function AdminReportsPage() {
                 </div>
 
                 {actioningId === r.id && (
-                  <form onSubmit={(e) => handleUpdate(e, r.id)} className="mt-4 bg-gray-50 p-4 rounded-md border border-gray-200">
+                  <form onSubmit={(e) => handleUpdate(e, r.id)} className="mt-4 bg-surface p-5 rounded-lg border border-border">
                     <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700">Status</label>
-                        <select
-                          value={newStatus}
-                          onChange={e => setNewStatus(e.target.value)}
-                          className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm p-2 border"
-                        >
-                          <option value="pending">Pending</option>
-                          <option value="reviewed">Reviewed</option>
-                          <option value="actioned">Actioned</option>
-                          <option value="dismissed">Dismissed</option>
-                        </select>
-                      </div>
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700">Moderation Action (Optional)</label>
-                        <input
-                          type="text"
-                          value={modAction}
-                          onChange={e => setModAction(e.target.value)}
-                          placeholder="e.g. Deleted comment, Warned user"
-                          className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm p-2 border"
-                        />
-                      </div>
+                      <PsSelect
+                        label="Status"
+                        value={newStatus}
+                        onChange={e => setNewStatus(e.target.value)}
+                      >
+                        <option value="pending">Pending</option>
+                        <option value="reviewed">Reviewed</option>
+                        <option value="actioned">Actioned</option>
+                        <option value="dismissed">Dismissed</option>
+                      </PsSelect>
+                      <PsInput
+                        label="Moderation Action (Optional)"
+                        value={modAction}
+                        onChange={e => setModAction(e.target.value)}
+                        placeholder="e.g. Deleted comment, Warned user"
+                      />
                     </div>
-                    <div className="mt-4 flex justify-end space-x-2">
-                      <button
-                        type="button"
-                        onClick={() => setActioningId(null)}
-                        className="bg-gray-200 text-gray-800 px-3 py-2 rounded-md text-sm font-medium"
-                      >
+                    <div className="mt-4 flex justify-end gap-3 pt-4 border-t border-border">
+                      <PsButton type="button" variant="ghost" onClick={() => setActioningId(null)}>
                         Cancel
-                      </button>
-                      <button
-                        type="submit"
-                        className="bg-indigo-600 text-white px-3 py-2 rounded-md text-sm font-medium hover:bg-indigo-700"
-                      >
-                        Save
-                      </button>
+                      </PsButton>
+                      <PsButton type="submit">
+                        Save Status
+                      </PsButton>
                     </div>
                   </form>
                 )}
@@ -175,7 +165,7 @@ export default function AdminReportsPage() {
             ))}
           </ul>
         )}
-      </div>
+      </PsCard>
     </div>
   );
 }

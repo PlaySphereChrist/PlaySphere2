@@ -1,9 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { api } from '../../lib/api';
-import ErrorMessage from '../../components/ErrorMessage';
-import Spinner from '../../components/Spinner';
 import ReportModal from './ReportModal';
 import ModerateModal from './ModerateModal';
+import { PsButton, PsInput, PsAlert, PsLoading, PsTextarea } from '../../components/ui';
 
 export default function CommentSection({ postId, currentUser, isMember }) {
   const [comments, setComments] = useState([]);
@@ -89,12 +88,12 @@ export default function CommentSection({ postId, currentUser, isMember }) {
     }
   };
 
-  if (loading) return <div className="mt-4"><Spinner size="sm" /></div>;
-  if (error) return <div className="mt-4"><ErrorMessage message={error} /></div>;
+  if (loading) return <div className="mt-4"><PsLoading /></div>;
+  if (error) return <div className="mt-4"><PsAlert variant="error">{error}</PsAlert></div>;
 
   return (
-    <div className="mt-6 border-t border-gray-200 pt-4">
-      <h4 className="text-sm font-medium text-gray-900 mb-4">Comments ({comments.length})</h4>
+    <div className="mt-4">
+      <h4 className="text-sm font-serif font-bold text-primary mb-4">Comments ({comments.length})</h4>
 
       <div className="space-y-4 mb-4">
         {comments.map(c => {
@@ -103,44 +102,43 @@ export default function CommentSection({ postId, currentUser, isMember }) {
           const canEdit = isAuthor || isAdmin;
 
           return (
-            <div key={c.id} className="bg-gray-50 rounded-md p-3 text-sm">
-              <div className="flex justify-between items-start mb-1">
-                <span className="font-medium text-gray-900">{c.author_email}</span>
-                <span className="text-xs text-gray-500">{new Date(c.created_at).toLocaleString()}</span>
+            <div key={c.id} className="bg-pill-hover rounded-lg p-4 text-sm border border-border">
+              <div className="flex justify-between items-start mb-2">
+                <span className="font-bold text-primary">{c.author_email}</span>
+                <span className="text-xs text-muted font-medium">{new Date(c.created_at).toLocaleString()}</span>
               </div>
 
               {c.is_moderated ? (
-                <div className="text-red-600 italic">This comment was moderated: {c.moderation_reason || 'No reason provided'}</div>
+                <div className="text-error italic p-3 bg-error/5 rounded border border-error/10">This comment was moderated: {c.moderation_reason || 'No reason provided'}</div>
               ) : editingId === c.id ? (
                 <div className="mt-2">
-                  <textarea
-                    className="w-full border-gray-300 rounded-md shadow-sm text-sm p-2 border"
+                  <PsTextarea
                     rows={2}
                     value={editBody}
                     onChange={e => setEditBody(e.target.value)}
                   />
-                  <div className="mt-2 flex space-x-2">
-                    <button onClick={() => handleEditSubmit(c.id)} className="text-xs bg-indigo-600 text-white px-2 py-1 rounded">Save</button>
-                    <button onClick={() => setEditingId(null)} className="text-xs bg-gray-200 text-gray-800 px-2 py-1 rounded">Cancel</button>
+                  <div className="mt-3 flex space-x-2">
+                    <PsButton onClick={() => setEditingId(null)} variant="ghost" size="sm">Cancel</PsButton>
+                    <PsButton onClick={() => handleEditSubmit(c.id)} size="sm">Save</PsButton>
                   </div>
                 </div>
               ) : (
-                <div className="text-gray-700 whitespace-pre-wrap">{c.body}</div>
+                <div className="text-primary whitespace-pre-wrap">{c.body}</div>
               )}
 
               {!c.is_moderated && editingId !== c.id && (
-                <div className="mt-2 flex space-x-3 text-xs">
+                <div className="mt-3 flex space-x-3 text-xs border-t border-border/50 pt-2">
                   {canEdit && (
                     <>
-                      <button onClick={() => startEdit(c)} className="text-indigo-600 hover:text-indigo-900">Edit</button>
-                      <button onClick={() => handleArchive(c.id)} className="text-red-600 hover:text-red-900">Delete</button>
+                      <button onClick={() => startEdit(c)} className="text-secondary hover:text-primary transition font-medium">Edit</button>
+                      <button onClick={() => handleArchive(c.id)} className="text-error hover:text-error/80 transition font-medium">Delete</button>
                     </>
                   )}
                   {isAdmin && (
-                    <button onClick={() => setModerateCommentId(c.id)} className="text-red-600 hover:text-red-900">Moderate</button>
+                    <button onClick={() => setModerateCommentId(c.id)} className="text-error hover:text-error/80 font-medium">Moderate</button>
                   )}
                   {currentUser && !isAuthor && (
-                    <button onClick={() => setReportCommentId(c.id)} className="text-gray-500 hover:text-gray-700">Report</button>
+                    <button onClick={() => setReportCommentId(c.id)} className="text-secondary hover:text-primary font-medium">Report</button>
                   )}
                 </div>
               )}
@@ -150,25 +148,26 @@ export default function CommentSection({ postId, currentUser, isMember }) {
       </div>
 
       {isMember ? (
-        <form onSubmit={handleCreate} className="mt-4 flex gap-2">
-          <input
-            type="text"
-            className="flex-1 rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm p-2 border"
-            placeholder="Add a comment..."
-            value={newBody}
-            onChange={(e) => setNewBody(e.target.value)}
-            disabled={submitting}
-          />
-          <button
+        <form onSubmit={handleCreate} className="mt-6 flex flex-col sm:flex-row gap-3">
+          <div className="flex-1">
+            <PsInput
+              placeholder="Add a comment..."
+              value={newBody}
+              onChange={(e) => setNewBody(e.target.value)}
+              disabled={submitting}
+            />
+          </div>
+          <PsButton
             type="submit"
             disabled={submitting || !newBody.trim()}
-            className="inline-flex justify-center items-center rounded-md border border-transparent bg-indigo-600 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-indigo-700 focus:outline-none disabled:opacity-50"
           >
             {submitting ? '...' : 'Post'}
-          </button>
+          </PsButton>
         </form>
       ) : (
-        <div className="text-sm text-gray-500 italic mt-4">You must join the community to comment.</div>
+        <PsAlert variant="info" className="mt-4">
+          You must join the community to comment.
+        </PsAlert>
       )}
 
       {reportCommentId && (
