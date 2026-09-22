@@ -167,7 +167,7 @@ export default function TeamsPage() {
                 </div>
                 <div className="flex gap-2">
                   <PsButton size="sm" onClick={() => handleRespond(inv.id, 'accept')}>Accept</PsButton>
-                  <PsButton size="sm" variant="secondary" onClick={() => handleRespond(inv.id, 'decline')}>Decline</PsButton>
+                  <PsButton size="sm" variant="secondary" onClick={() => handleRespond(inv.id, 'reject')}>Decline</PsButton>
                 </div>
               </PsCard>
             ))}

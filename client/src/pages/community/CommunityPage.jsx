@@ -117,18 +117,25 @@ export default function CommunityPage() {
 
   return (
     <div className="max-w-4xl mx-auto space-y-6 pb-12">
-      <PsCard className="bg-maroon overflow-hidden border-none text-surface">
+      <PsCard
+        className="overflow-hidden border-none"
+        style={{ backgroundColor: '#7a1f2b' }}
+      >
         <div className="px-6 py-8 flex flex-col sm:flex-row justify-between items-center gap-6 relative">
           <div className="absolute top-0 left-0 w-full h-full opacity-10 pointer-events-none" style={{ backgroundImage: 'radial-gradient(circle at 100% 100%, #ffffff 0%, transparent 50%)' }}></div>
           <div className="relative z-10 text-center sm:text-left">
-            <h2 className="text-3xl font-serif font-bold text-surface">{community.name}</h2>
-            <p className="mt-2 text-surface/80">{community.description}</p>
+            <h2 className="text-3xl font-serif font-bold" style={{ color: '#ffffff' }}>{community.name}</h2>
+            <p className="mt-2" style={{ color: 'rgba(255,255,255,0.8)' }}>{community.description}</p>
           </div>
           <div className="relative z-10">
             <PsButton
               onClick={handleJoinLeave}
               disabled={membershipLoading}
-              className={isMember ? 'bg-surface text-maroon hover:bg-pill' : 'bg-gold hover:bg-gold/90 text-surface'}
+              style={
+                isMember
+                  ? { backgroundColor: '#ffffff', color: '#7a1f2b' }
+                  : { backgroundColor: '#c9a227', color: '#ffffff' }
+              }
             >
               {membershipLoading ? '...' : isMember ? 'Leave Community' : 'Join Community'}
             </PsButton>
