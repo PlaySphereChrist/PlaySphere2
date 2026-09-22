@@ -8,25 +8,30 @@ class EmailService {
     this.configured = false;
 
     if (env.EMAIL_HOST && env.EMAIL_USER && env.EMAIL_PASSWORD) {
+      const port = Number(env.EMAIL_PORT || 587);
+
       this.transporter = nodemailer.createTransport({
         host: env.EMAIL_HOST,
-        port: env.EMAIL_PORT || 587,
-        secure: env.EMAIL_PORT === '465', // true for 465, false for other ports
+        port,
+        secure: port === 465,
         auth: {
           user: env.EMAIL_USER,
           pass: env.EMAIL_PASSWORD,
         },
       });
+
       this.configured = true;
+
+      console.log(
+        `[Email] SMTP configured: ${env.EMAIL_HOST}:${port} as ${env.EMAIL_USER}`
+      );
     } else {
-      console.warn('⚠️ EMAIL_HOST, EMAIL_USER, or EMAIL_PASSWORD not configured. Emails will be skipped safely.');
+      console.warn(
+        '⚠️ EMAIL_HOST, EMAIL_USER, or EMAIL_PASSWORD not configured. Emails will be skipped safely.'
+      );
     }
   }
 
-  /**
-   * Sends an email based on a template.
-   * Fails gracefully if not configured or if sending fails.
-   */
   async sendTemplateEmail(to, templateName, data) {
     if (!this.configured) {
       console.log(`[Email Skipped] Template: ${templateName}, To: ${to}`);
@@ -34,6 +39,7 @@ class EmailService {
     }
 
     const templateFn = templates[templateName];
+
     if (!templateFn) {
       console.error(`Email template '${templateName}' not found.`);
       return;
@@ -42,16 +48,25 @@ class EmailService {
     const { subject, html } = templateFn(data);
 
     try {
-      await this.transporter.sendMail({
-        from: env.EMAIL_FROM || '"PlaySphere" <noreply@playsphere.local>',
+      const info = await this.transporter.sendMail({
+        from: env.EMAIL_FROM || env.EMAIL_USER,
         to,
         subject,
         html,
       });
-      // console.log(`Email sent to ${to} for event ${templateName}`);
+
+      console.log(
+        `[Email] Sent successfully to ${to}. Message ID: ${info.messageId}`
+      );
+
+      return info;
     } catch (error) {
-      console.error('Failed to send email:', error);
-      // Explicitly do not throw to avoid rolling back business transactions
+      console.error('[Email] Failed to send:', {
+        message: error.message,
+        code: error.code,
+        response: error.response,
+        command: error.command,
+      });
     }
   }
 }

@@ -11,6 +11,64 @@ class MatchesService {
   _conflict(msg)   { const e = new Error(msg); e.statusCode = 409; return e; }
 
   // ---------------------------------------------------------------------------
+  // HELPER: Post a community event_announcement about a match lifecycle event
+  // Fire-and-forget — a failure here must not block the match operation.
+  // ---------------------------------------------------------------------------
+  async _postMatchAnnouncement(match, eventType, requestingUserId, extra = {}) {
+    try {
+      const commRes = await query(
+        `SELECT id FROM communities WHERE tournament_id = $1 AND is_active = TRUE LIMIT 1`,
+        [match.tournament_id]
+      );
+      if (!commRes.rows[0]) return; // No community — skip silently
+
+      const communityId = commRes.rows[0].id;
+
+      // Check if requester is a community member, auto-join organizer if needed
+      const memberCheck = await query(
+        'SELECT id FROM community_members WHERE community_id = $1 AND user_id = $2',
+        [communityId, requestingUserId]
+      );
+      if (!memberCheck.rows[0]) {
+        await query(
+          `INSERT INTO community_members (community_id, user_id, role) VALUES ($1, $2, 'member') ON CONFLICT DO NOTHING`,
+          [communityId, requestingUserId]
+        );
+      }
+
+      // Build announcement body
+      let title, body;
+      if (eventType === 'scheduled') {
+        const roundInfo = extra.round_name ? `${extra.round_name} ` : '';
+        const when = match.scheduled_at ? ` on ${new Date(match.scheduled_at).toLocaleString()}` : '';
+        title = `Match Scheduled — ${roundInfo}#${extra.match_number || ''}`;
+        body = `A match has been scheduled${when}.${extra.notes ? `\n\nNotes: ${extra.notes}` : ''}`;
+      } else if (eventType === 'started') {
+        title = `Match Started! 🏆`;
+        body = `The match has kicked off!${extra.round_name ? ` (${extra.round_name})` : ''}`;
+      } else if (eventType === 'completed') {
+        title = `Match Result — ${extra.round_name || 'Result Posted'}`;
+        const summary = extra.result_summary ? JSON.stringify(extra.result_summary) : 'See match details for the full result.';
+        body = `The match has concluded.\n\nResult: ${summary}`;
+      } else if (eventType === 'cancelled') {
+        title = `Match Cancelled`;
+        body = `A match has been cancelled.${extra.notes ? `\n\nReason: ${extra.notes}` : ''}`;
+      } else {
+        return;
+      }
+
+      await query(
+        `INSERT INTO posts (community_id, author_user_id, title, body, category)
+         VALUES ($1, $2, $3, $4, 'event_announcement'::post_category_type)`,
+        [communityId, requestingUserId, title, body]
+      );
+    } catch (err) {
+      // Non-fatal: log but don't bubble up
+      console.error('[MatchesService] Community announcement failed:', err.message);
+    }
+  }
+
+  // ---------------------------------------------------------------------------
   // GET /api/tournaments/:tournamentId/matches
   // Requires visibility access (delegates to tournamentsService.getTournament)
   // ---------------------------------------------------------------------------
@@ -242,6 +300,13 @@ class MatchesService {
       }
 
       await client.query('COMMIT');
+      // Fire-and-forget community announcement
+      const fixtureInfo = fixRes.rows[0];
+      this._postMatchAnnouncement(match, 'scheduled', requestingUser.id, {
+        round_name: fixtureInfo.round_name,
+        match_number: fixtureInfo.match_number,
+        notes: match.notes
+      });
       return match;
 
     } catch (err) {
@@ -300,7 +365,9 @@ class MatchesService {
       `, [matchId]);
 
       await client.query('COMMIT');
-      return updateRes.rows[0];
+      const startedMatch = updateRes.rows[0];
+      this._postMatchAnnouncement(startedMatch, 'started', requestingUser.id, {});
+      return startedMatch;
     } catch (err) {
       await client.query('ROLLBACK');
       throw err;
@@ -384,7 +451,11 @@ class MatchesService {
       }
 
       await client.query('COMMIT');
-      return updateMatchRes.rows[0];
+      const completedMatch = updateMatchRes.rows[0];
+      this._postMatchAnnouncement(completedMatch, 'completed', requestingUser.id, {
+        result_summary: data.result_summary
+      });
+      return completedMatch;
     } catch (err) {
       await client.query('ROLLBACK');
       throw err;
@@ -428,7 +499,11 @@ class MatchesService {
       `, [matchId, newNotes || null]);
 
       await client.query('COMMIT');
-      return updateRes.rows[0];
+      const cancelledMatch = updateRes.rows[0];
+      this._postMatchAnnouncement(cancelledMatch, 'cancelled', requestingUser.id, {
+        notes: data.reason
+      });
+      return cancelledMatch;
     } catch (err) {
       await client.query('ROLLBACK');
       throw err;
